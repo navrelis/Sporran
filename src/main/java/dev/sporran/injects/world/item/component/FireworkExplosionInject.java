@@ -1,0 +1,20 @@
+package dev.sporran.injects.world.item.component;
+
+import net.minecraft.world.item.component.FireworkExplosion;
+import net.neoforged.fml.common.asm.enumextension.*;
+import org.spongepowered.asm.mixin.Mixin;
+import dev.sporran.helpers.mixin.CreateStatic;
+
+@Mixin(FireworkExplosion.class)
+public abstract class FireworkExplosionInject {
+    @IndexedEnum
+    @NamedEnum(1)
+    @NetworkedEnum(NetworkedEnum.NetworkCheck.BIDIRECTIONAL)
+    @Mixin(FireworkExplosion.Shape.class)
+    public abstract static class ShapeInject implements IExtensibleEnum {
+        @CreateStatic
+        private static ExtensionInfo getExtensionInfo() {
+            return ExtensionInfo.nonExtended(FireworkExplosion.Shape.class);
+        }
+    }
+}

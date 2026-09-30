@@ -1,0 +1,39 @@
+{
+    "schemaVersion": 1,
+    "id": "sporran_create_compat",
+    "version": "${version}",
+    "name": "Sporran: Create Fabric Compat",
+    "description": "A compatibility layer to help bridge Create Fabric and any Create Forge addons.",
+    "authors": [
+        "BluSpring"
+    ],
+    "license": "MIT",
+    "icon": "icon.png",
+    "environment": "*",
+    "entrypoints": {
+        "client": [
+            "dev.sporran.compat.create.SporranCreateCompat"
+        ],
+        "mixinsquared": [
+            "dev.sporran.compat.create.SporranCreateCompatMixinCanceller"
+        ],
+        "sporran:mod_container": [
+            "dev.sporran.compat.create.SporranCreateCompatWrappedNeoContainer"
+        ]
+    },
+    "mixins": [
+        "sporran-create-compat.mixins.json"
+    ],
+    "depends": {
+        "fabricloader": ">=${loader_version}",
+        "minecraft": "${minecraft_version}",
+        "fabric-language-kotlin": ">=${fabric_kotlin_version}",
+        "sporran": "*"
+    },
+    "accessWidener": "sporran-create-compat.accesswidener",
+    "custom": {
+        "modmenu": {
+            "parent": "sporran"
+        }
+    }
+}

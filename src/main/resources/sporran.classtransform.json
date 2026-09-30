@@ -1,0 +1,8 @@
+{
+    "package": "dev.sporran.transform",
+    "java": [
+        "nightconfig.ConfigParserTransform",
+        "mixin.MixinInfoTransform"
+    ],
+    "mixins": []
+}

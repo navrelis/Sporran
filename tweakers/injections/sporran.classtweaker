@@ -1,0 +1,32 @@
+classTweaker v2 named
+
+# Sporran's own injected interfaces, these ones are manually inserted for interfaces
+# that can't be automatically generated, such as inner injections.
+transitive-inject-interface net/minecraft/client/gui/components/Button$Builder dev/sporran/injections/client/gui/components/ButtonBuilderInjection
+transitive-inject-interface net/minecraft/client/gui/screens/packs/PackSelectionModel$Entry dev/sporran/injections/client/gui/screens/packs/PackSelectionModelEntryInjection
+transitive-inject-interface net/minecraft/client/model/HumanoidModel$ArmPose dev/sporran/injections/client/model/HumanoidModelArmPoseInjection
+transitive-inject-interface net/minecraft/client/resources/model/SimpleBakedModel$Builder dev/sporran/injections/client/resources/model/SimpleBakedModelBuilderInjection
+transitive-inject-interface net/minecraft/client/sounds/ChannelAccess$ChannelHandle dev/sporran/injections/client/sounds/ChannelAccessHandleInjection
+transitive-inject-interface net/minecraft/server/packs/repository/Pack$Metadata dev/sporran/injections/server/packs/repository/PackMetadataInjection
+transitive-inject-interface net/minecraft/world/entity/ai/attributes/AttributeSupplier$Builder dev/sporran/injections/world/entity/ai/attributes/AttributeSupplierBuilderInjection
+transitive-inject-interface net/minecraft/world/entity/raid/Raid$RaiderType dev/sporran/injections/world/entity/raid/RaidRaiderTypeInjection
+transitive-inject-interface net/minecraft/world/food/FoodProperties$Builder dev/sporran/injections/world/food/FoodPropertiesBuilderInjection
+transitive-inject-interface net/minecraft/world/food/FoodProperties$PossibleEffect dev/sporran/injections/world/food/FoodPropertiesPossibleEffectInjection
+transitive-inject-interface net/minecraft/world/item/Item$Properties dev/sporran/injections/world/item/ItemPropertiesInjection
+transitive-inject-interface net/minecraft/world/level/storage/LevelStorageSource$LevelStorageAccess dev/sporran/injections/world/level/storage/LevelStorageAccessInjection
+transitive-inject-interface net/minecraft/world/level/storage/loot/LootContext$EntityTarget dev/sporran/injections/world/level/storage/loot/EntityTargetInjection
+transitive-inject-interface net/minecraft/resources/RegistryDataLoader$RegistryData dev/sporran/injections/resources/RegistryDataLoaderInjection$RegistryDataInjection<TT;>
+transitive-inject-interface net/minecraft/world/item/Item$TooltipContext dev/sporran/injections/world/item/ItemInjection$TooltipContextInjection
+transitive-inject-interface net/minecraft/client/renderer/block/model/BlockModel$GuiLight dev/sporran/injections/client/renderer/block/model/BlockModelInjection$GuiLightInjection
+transitive-inject-interface net/minecraft/world/flag/FeatureFlagRegistry$Builder dev/sporran/injections/world/flag/FeatureFlagRegistryInjection$BuilderInjection
+transitive-inject-interface net/minecraft/core/HolderLookup$RegistryLookup dev/sporran/injections/core/HolderLookupInjection$RegistryLookupInjection
+transitive-inject-interface net/minecraft/world/level/biome/BiomeSpecialEffects dev/sporran/injections/world/level/biome/BiomeSpecialEffectsInjection
+transitive-inject-interface net/minecraft/world/level/biome/BiomeSpecialEffects$GrassColorModifier dev/sporran/injections/world/level/biome/BiomeSpecialEffectsInjection$GrassColorModifierInjection
+transitive-inject-interface net/minecraft/data/tags/TagsProvider$TagAppender dev/sporran/injections/data/tags/TagsProviderInjection$TagAppenderInjection
+transitive-inject-interface net/minecraft/world/item/alchemy/PotionBrewing$Builder dev/sporran/injections/world/item/alchemy/PotionBrewingInjection$BuilderInjection
+transitive-inject-interface net/minecraft/world/level/block/state/BlockBehaviour$Properties dev/sporran/injections/world/level/block/state/BlockBehaviourInjection$PropertiesInjection
+transitive-inject-interface net/minecraft/world/item/CreativeModeTab$Builder dev/sporran/injections/world/item/CreativeModeTabInjection$BuilderInjection
+transitive-inject-interface net/minecraft/client/multiplayer/prediction/BlockStatePredictionHandler$ServerVerifiedState dev/sporran/injections/client/multiplayer/prediction/BlockStatePredictionHandlerInjection$ServerVerifiedStateInjection
+transitive-inject-interface net/minecraft/world/entity/vehicle/Boat$Type dev/sporran/injections/world/entity/vehicle/BoatInjection$TypeInjection
+
+transitive-extend-enum net/minecraft/world/item/UseAnim CUSTOM

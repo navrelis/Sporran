@@ -1,0 +1,89 @@
+{
+    "schemaVersion": 1,
+    "id": "sporran",
+    "version": "${version}",
+    "name": "Sporran",
+    "description": "Loads NeoForge 1.21.1 mods on Fabric. NeoForge mods are not included; get them from their authors.",
+    "authors": [
+        "Sporran Team"
+    ],
+    "contributors": [
+        "BluSpring (original Kilt author)",
+        "AlphaMode (original Kilt author)",
+        "KiltMC (Kilt project)",
+        "Acuadragon100",
+        "Brickmaster1",
+        "Cartrigger",
+        "CephalonCosmic",
+        "embeddedt",
+        "ForestWolf99",
+        "ItsBlackGear",
+        "kallmetony",
+        "KorewaLidesu",
+        "ptk671",
+        "SettingDust",
+        "skyevg",
+        "SuperKnux"
+    ],
+    "provides": [
+        "neoforge",
+        "kilt"
+    ],
+    "license": "LGPL-2.1-only",
+    "icon": "assets/sporran/icon.png",
+    "environment": "*",
+    "entrypoints": {
+        "client": [
+            "dev.sporran.client.SporranClient"
+        ],
+        "main": [
+            "dev.sporran.Sporran"
+        ],
+        "server": [
+            "dev.sporran.server.dedicated.SporranDedicatedServer"
+        ],
+        "mm_kilt:early_risers": [
+            "dev.sporran.loader.asm.SporranEarlyRiser"
+        ],
+        "mixinsquared-adjuster": [
+            "dev.sporran.loader.mixin.SporranAnnotationAdjuster"
+        ],
+        "mixinsquared": [
+            "dev.sporran.loader.mixin.SporranMixinCanceller"
+        ],
+        "afl:instrumentation": [
+            "dev.sporran.loader.asm.SporranInstrumentationHandler"
+        ]
+    },
+    "mixins": [
+        "sporran.mixins.json",
+        "sporran_neo_injects.mixins.json",
+        "sporran_neo_modifications.mixins.json"
+    ],
+    "depends": {
+        "fabricloader": ">=${loader_version}",
+        "fabric-api": ">=${fabric_version}",
+        "minecraft": "${minecraft_version}",
+        "fabric-language-kotlin": ">=${fabric_kotlin_version}",
+        "mm_sporran": ">=${fabric_asm_version}"
+    },
+    "custom": {
+        "sporran:access_transformer": [
+            "META-INF/accesstransformer.cfg"
+        ],
+        "lithium:options": {
+            "mixin.entity.collisions.fluid": false
+        },
+        "potatoptimize:options": {
+            "mixin.world.farmland": false
+        },
+        "afl:classtransform": "sporran.classtransform.json"
+    },
+    "breaks": {
+        "quilt_loader": "*",
+        "async": "*",
+        "creativecore": "<2.12.33",
+        "embeddium": "*"
+    },
+    "accessWidener": "sporran.classtweaker"
+}

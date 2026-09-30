@@ -1,0 +1,28 @@
+package dev.sporran.injects.client.particle;
+
+import net.minecraft.client.particle.Particle;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import dev.sporran.injections.client.particle.ParticleInjection;
+
+@Mixin(Particle.class)
+public abstract class ParticleInject implements ParticleInjection {
+    @Shadow protected double x;
+    @Shadow protected double y;
+    @Shadow protected double z;
+
+    @Shadow
+    public abstract AABB getBoundingBox();
+
+    @Override
+    public AABB getRenderBoundingBox(float partialTicks) {
+        return this.getBoundingBox().inflate(1.0);
+    }
+
+    @Override
+    public Vec3 getPos() {
+        return new Vec3(this.x, this.y, this.z);
+    }
+}
