@@ -4,6 +4,18 @@ Sporran is a modified version of Kilt v21.1.13 (https://github.com/KiltMC/Kilt, 
 page records what Sporran changed compared to that release: the fixes to NeoForge API behaviour, the renaming, and
 what is still known to be missing.
 
+## Version 1.0.1
+
+- Fixed: mobs between 0.75 and 1 block wide never walked along their path (they stood still while chasing or
+  wandering). This hit many mobs of NeoForge mods (for example Cataclysm's Koboleton and Astral Dimension's Bovelin,
+  Astranite Cutter, Corrupted Astral Golem and Gloom) and also vanilla mobs such as cows, pigs and sheep.
+  Pathfinding now matches NeoForge.
+- Fixed: arrow-type projectiles from NeoForge mods ran their hit logic on every tick of flight. L_Ender's
+  Cataclysm's Void Scatter Arrow burst at the shooter, the thrown Ceraunus and Brontes returned immediately, and
+  Scylla's Ceraunus throw did not reach its target. Arrows now behave as on NeoForge.
+- Fixed: `ProjectileImpactEvent` now fires for arrows and tridents (as on NeoForge), so mods that react to or cancel
+  arrow impacts work.
+
 ## Renaming
 
 Everything Kilt-named was renamed to Sporran:

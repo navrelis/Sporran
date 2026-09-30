@@ -24,7 +24,7 @@ public abstract class ThrowableProjectileInject extends Projectile {
         if (!EventHooks.onProjectileImpact(this, hitResult)) {
             return original.call(instance, hitResult);
         } else {
-            return null;
+            return ProjectileDeflection.NONE;
         }
     }
 }
