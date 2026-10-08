@@ -24,6 +24,7 @@ import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -38,9 +39,12 @@ public abstract class ItemRendererInject {
     @Shadow public static VertexConsumer getFoilBufferDirect(MultiBufferSource buffer, RenderType renderType, boolean noEntity, boolean withGlint) { throw new IllegalStateException(); };
     @Shadow private static boolean hasAnimatedTexture(ItemStack stack) { throw new IllegalStateException(); };
 
+    // Sporran: runs for every item rendered in a frame, resolve the override check only once.
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$APPLY_TRANSFORM_OVERRIDE = SporranHelper.MethodOverrideCheck.of(BakedModel.class, "applyTransform", ItemDisplayContext.class, PoseStack.class, Boolean.TYPE);
+
     @WrapOperation(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/block/model/ItemTransform;apply(ZLcom/mojang/blaze3d/vertex/PoseStack;)V"))
     private void sporran$dontApplyTransformTwice(ItemTransform instance, boolean leftHand, PoseStack poseStack, Operation<Void> original, @Local(argsOnly = true) BakedModel model, @Share("transform") LocalBooleanRef shouldTransform) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(model.getClass(), BakedModel.class, "applyTransform", ItemDisplayContext.class, PoseStack.class, Boolean.TYPE)) {
+        if (sporran$APPLY_TRANSFORM_OVERRIDE.test(model.getClass())) {
             shouldTransform.set(true);
             return;
         } else {
@@ -53,7 +57,7 @@ public abstract class ItemRendererInject {
                 } else if (wrapped == model) {
                     throw new IllegalArgumentException("Model " + model + " is wrapping itself!");
                 } else {
-                    if (SporranHelper.INSTANCE.hasMethodOverride(model.getClass(), BakedModel.class, "applyTransform", ItemDisplayContext.class, PoseStack.class, Boolean.TYPE)) {
+                    if (sporran$APPLY_TRANSFORM_OVERRIDE.test(model.getClass())) {
                         shouldTransform.set(true);
                         return;
                     }

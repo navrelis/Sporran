@@ -57,6 +57,10 @@ public abstract class HumanoidArmorLayerInject<T extends LivingEntity, M extends
     @Unique private final WrappedModelAsHumanoid sporran$wrappedHumanoidModel = new WrappedModelAsHumanoid();
     @Unique private final AtomicBoolean sporran$isRunningCompatibility = new AtomicBoolean(false);
 
+    // Sporran: these run for every armor piece of every entity in every frame, resolve the override checks only once.
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_ARMOR_MODEL_HOOK_OVERRIDE = SporranHelper.MethodOverrideCheck.of(HumanoidArmorLayer.class, "getArmorModelHook", LivingEntity.class, ItemStack.class, EquipmentSlot.class, HumanoidModel.class);
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_ARMOR_TEXTURE_OVERRIDE = SporranHelper.MethodOverrideCheck.withReturnType(IItemExtension.class, "getArmorTexture", ResourceLocation.class, ItemStack.class, Entity.class, EquipmentSlot.class, ArmorMaterial.Layer.class, boolean.class);
+
     @Inject(method = "render(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/world/entity/LivingEntity;FFFFFF)V", at = @At("HEAD"))
     private void sporran$updateRenderLayerData(PoseStack poseStack, MultiBufferSource buffer, int packedLight, T livingEntity, float limbSwing, float limbSwingAmount, float partialTicks, float ageInTicks, float netHeadYaw, float headPitch, CallbackInfo ci) {
         this.sporran$renderLayerData.update(limbSwing, limbSwingAmount, partialTicks, ageInTicks, netHeadYaw, headPitch);
@@ -112,8 +116,8 @@ public abstract class HumanoidArmorLayerInject<T extends LivingEntity, M extends
     @WrapOperation(method = "renderArmorPiece", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/layers/HumanoidArmorLayer;renderModel(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/client/model/HumanoidModel;ILnet/minecraft/resources/ResourceLocation;)V"))
     private void sporran$tryRenderModel(HumanoidArmorLayer<T, M, A> instance, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, A humanoidModel, int dyeColor, ResourceLocation resourceLocation, Operation<Void> original, @Share(value = "model", namespace = Sporran.MOD_ID) LocalRef<Model> modelRef, @Share(value = "extensions", namespace = Sporran.MOD_ID) LocalRef<IClientItemExtensions> extensionsRef, @Local ItemStack stack, @Local(argsOnly = true) LivingEntity entity, @Local ArmorMaterial.Layer layer, @Local ArmorMaterial material, @Local boolean flag, @Local(argsOnly = true) EquipmentSlot slot) {
         if (extensionsRef.get() != IClientItemExtensions.DEFAULT
-            || SporranHelper.INSTANCE.hasMethodOverride(this.getClass(), HumanoidArmorLayer.class, "getArmorModelHook", LivingEntity.class, ItemStack.class, EquipmentSlot.class, HumanoidModel.class)
-            || SporranHelper.INSTANCE.hasMethodOverrideWithReturnType(stack.getItem().getClass(), IItemExtension.class, "getArmorTexture", ResourceLocation.class, ItemStack.class, Entity.class, EquipmentSlot.class, ArmorMaterial.Layer.class, boolean.class)
+            || sporran$GET_ARMOR_MODEL_HOOK_OVERRIDE.test(this.getClass())
+            || sporran$GET_ARMOR_TEXTURE_OVERRIDE.test(stack.getItem().getClass())
         ) {
             int color = extensionsRef.get().getArmorLayerTintColor(stack, entity, layer, material.layers().indexOf(layer), dyeColor);
 
@@ -129,7 +133,7 @@ public abstract class HumanoidArmorLayerInject<T extends LivingEntity, M extends
 
     @WrapOperation(method = "renderArmorPiece", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/layers/HumanoidArmorLayer;renderTrim(Lnet/minecraft/core/Holder;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/world/item/armortrim/ArmorTrim;Lnet/minecraft/client/model/HumanoidModel;Z)V"))
     private void sporran$tryUseWrapperForTrim(HumanoidArmorLayer<T, M, A> instance, Holder<ArmorMaterial> holder, PoseStack poseStack, MultiBufferSource multiBufferSource, int i, ArmorTrim armorTrim, A humanoidModel, boolean bl, Operation<Void> original, @Share(value = "model", namespace = Sporran.MOD_ID) LocalRef<Model> modelRef, @Share(value = "extensions", namespace = Sporran.MOD_ID) LocalRef<IClientItemExtensions> extensionsRef) {
-        if (extensionsRef.get() != IClientItemExtensions.DEFAULT || SporranHelper.INSTANCE.hasMethodOverride(this.getClass(), HumanoidArmorLayer.class, "getArmorModelHook", LivingEntity.class, ItemStack.class, EquipmentSlot.class, HumanoidModel.class)) {
+        if (extensionsRef.get() != IClientItemExtensions.DEFAULT || sporran$GET_ARMOR_MODEL_HOOK_OVERRIDE.test(this.getClass())) {
             this.sporran$wrappedHumanoidModel.getWrapped().set(modelRef.get());
             original.call(instance, holder, poseStack, multiBufferSource, i, armorTrim, this.sporran$wrappedHumanoidModel, bl);
         } else {
@@ -139,7 +143,7 @@ public abstract class HumanoidArmorLayerInject<T extends LivingEntity, M extends
 
     @WrapOperation(method = "renderArmorPiece", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/layers/HumanoidArmorLayer;renderGlint(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/client/model/HumanoidModel;)V"))
     private void sporran$tryUseWrapperForGlint(HumanoidArmorLayer<T, M, A> instance, PoseStack poseStack, MultiBufferSource multiBufferSource, int i, A humanoidModel, Operation<Void> original, @Share(value = "model", namespace = Sporran.MOD_ID) LocalRef<Model> modelRef, @Share(value = "extensions", namespace = Sporran.MOD_ID) LocalRef<IClientItemExtensions> extensionsRef) {
-        if (extensionsRef.get() != IClientItemExtensions.DEFAULT || SporranHelper.INSTANCE.hasMethodOverride(this.getClass(), HumanoidArmorLayer.class, "getArmorModelHook", LivingEntity.class, ItemStack.class, EquipmentSlot.class, HumanoidModel.class)) {
+        if (extensionsRef.get() != IClientItemExtensions.DEFAULT || sporran$GET_ARMOR_MODEL_HOOK_OVERRIDE.test(this.getClass())) {
             this.sporran$wrappedHumanoidModel.getWrapped().set(modelRef.get());
             original.call(instance, poseStack, multiBufferSource, i, this.sporran$wrappedHumanoidModel);
         } else {

@@ -418,6 +418,13 @@ java {
 tasks {
     test {
         useJUnitPlatform()
+
+        // src/test holds plain unit tests only. fabric-loader-junit (see the test libraries above) registers a JUnit
+        // session listener that starts Fabric Loader inside the test JVM, and with it Sporran's own mod loading and
+        // remapping, which needs the game set-up of a Loom run and otherwise ends in Fabric Loader's error window.
+        // So it stays off this task's class path, and the test JVM is headless in any case.
+        classpath = classpath.filter { !it.name.startsWith("fabric-loader-junit-") }
+        systemProperty("java.awt.headless", "true")
     }
 
     remapJar {

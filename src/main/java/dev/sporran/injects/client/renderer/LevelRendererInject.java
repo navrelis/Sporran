@@ -263,9 +263,12 @@ public abstract class LevelRendererInject {
         return original.call(instance);
     }
 
+    // Sporran: getLightColor runs for every lit face while chunks are meshed, resolve the override check only once.
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_LIGHT_EMISSION_OVERRIDE = SporranHelper.MethodOverrideCheck.of(Block.class, "getLightEmission", BlockState.class, BlockAndTintGetter.class, BlockPos.class);
+
     @WrapOperation(method = "getLightColor(Lnet/minecraft/world/level/BlockAndTintGetter;Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/core/BlockPos;)I", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/state/BlockState;getLightEmission()I"))
     private static int sporran$tryUseForgeLightEmission(BlockState instance, Operation<Integer> original, @Local(argsOnly = true) BlockAndTintGetter level, @Local(argsOnly = true) BlockPos pos) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getBlock().getClass(), Block.class, "getLightEmission", BlockState.class, BlockAndTintGetter.class, BlockPos.class)) {
+        if (sporran$GET_LIGHT_EMISSION_OVERRIDE.test(instance.getBlock().getClass())) {
             return instance.getLightEmission(level, pos);
         }
 

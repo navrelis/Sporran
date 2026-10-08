@@ -52,6 +52,9 @@ public abstract class BlockRenderDispatcherInject implements BlockRenderDispatch
     @Unique private final ThreadLocal<RenderType> sporran$renderType = new ThreadLocal<>();
     @Unique private final ThreadLocal<Boolean> sporran$queryModelSpecificData = ThreadLocal.withInitial(() -> true);
 
+    // Sporran: runs for every single block rendered in a frame (entities carrying or showing blocks), resolve the override check only once.
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_RENDER_TYPES_OVERRIDE = SporranHelper.MethodOverrideCheck.of(IBakedModelExtension.class, "getRenderTypes", BlockState.class, RandomSource.class, ModelData.class);
+
     @Override
     public void renderBreakingTexture(BlockState state, BlockPos pos, BlockAndTintGetter level, PoseStack poseStack, VertexConsumer consumer, ModelData data) {
         sporran$modelData.set(data);
@@ -109,7 +112,7 @@ public abstract class BlockRenderDispatcherInject implements BlockRenderDispatch
         var singleRenderType = ItemBlockRenderTypes.getRenderType(blockState, false);
         var existingRenderTypes = bakedModel.getRenderTypes(blockState, RandomSource.create(42), modelData).asList();
 
-        if (SporranHelper.INSTANCE.hasMethodOverride(bakedModel.getClass(), IBakedModelExtension.class, "getRenderTypes", BlockState.class, RandomSource.class, ModelData.class)) {
+        if (sporran$GET_RENDER_TYPES_OVERRIDE.test(bakedModel.getClass())) {
             for (RenderType renderType : existingRenderTypes) {
                 if (modelData == ModelData.EMPTY)
                     original.call(instance, pose, vertexConsumer, blockState, bakedModel, f, g, h, i, j);

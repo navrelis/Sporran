@@ -14,6 +14,7 @@ import net.neoforged.neoforge.common.crafting.IngredientType;
 import net.neoforged.neoforge.common.util.NeoForgeExtraCodecs;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
 import dev.sporran.processor.FabricInjectedInterface;
+import dev.sporran.util.EmptyBeforeTags;
 import dev.sporran.util.SporranHelper;
 
 import java.util.List;
@@ -24,6 +25,9 @@ public interface IngredientInjection {
     MapCodec<Ingredient> MAP_CODEC_NONEMPTY = CraftingHelper.makeIngredientMapCodec();
     Codec<List<Ingredient>> LIST_CODEC = MAP_CODEC_NONEMPTY.codec().listOf();
     Codec<List<Ingredient>> LIST_CODEC_NONEMPTY = LIST_CODEC.validate(list -> list.isEmpty() ? DataResult.error(() -> "Item array cannot be empty, at least one item must be defined") : DataResult.success(list));
+
+    // Sporran: see IngredientInject#sporran$rememberItemsResolvedBeforeTags
+    EmptyBeforeTags<Ingredient> EMPTY_BEFORE_TAGS = new EmptyBeforeTags<>(Ingredient::sporran$forgetItems);
 
     static Ingredient create(ICustomIngredient customIngredient) {
         Ingredient ingredient = new Ingredient(new Ingredient.Value[0]);
@@ -58,6 +62,11 @@ public interface IngredientInjection {
 
     default void sporran$setCustomIngredient(ICustomIngredient customIngredient) {
         throw SporranHelper.createMixinException(IngredientInjection.class, "sporran$setCustomIngredient");
+    }
+
+    /** Drops the cached items (and what is derived from them), so that the next request resolves them again. */
+    default void sporran$forgetItems() {
+        throw SporranHelper.createMixinException(IngredientInjection.class, "sporran$forgetItems");
     }
 
     interface ValueInjection {

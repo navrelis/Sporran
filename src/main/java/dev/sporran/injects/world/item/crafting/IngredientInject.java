@@ -16,11 +16,13 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
+import it.unimi.dsi.fastutil.ints.IntList;
 import net.neoforged.neoforge.common.crafting.CraftingHelper;
 import net.neoforged.neoforge.common.crafting.ICustomIngredient;
 import net.neoforged.neoforge.common.crafting.IngredientType;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
 import org.jetbrains.annotations.Nullable;
+import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Implements;
 import org.spongepowered.asm.mixin.Interface;
@@ -53,6 +55,8 @@ public abstract class IngredientInject implements IngredientInjection {
 
     @Shadow public abstract ItemStack[] getItems();
     @Shadow @Final private Ingredient.Value[] values;
+    @Shadow @Nullable private ItemStack[] itemStacks;
+    @Shadow @Nullable private IntList stackingIds;
 
     @Shadow @Final @Mutable public static Codec<Ingredient> CODEC;
     @Shadow @Final @Mutable public static Codec<Ingredient> CODEC_NONEMPTY;
@@ -76,6 +80,26 @@ public abstract class IngredientInject implements IngredientInjection {
     public IngredientInject(ICustomIngredient customIngredient) {
         this(new Ingredient.Value[0]);
         this.customIngredient = customIngredient;
+    }
+
+    // Sporran: an ingredient keeps the items it resolved on the first call for good. Before the first data pack load has
+    //  bound the tags, a tag has no items yet, so an ingredient asked that early (other mods do it while the recipes are
+    //  being loaded) kept "no items" for the rest of the game run. For a plain tag ingredient the mod that asked usually
+    //  cleans up itself, but not for the ingredients inside a NeoForge custom ingredient such as neoforge:difference,
+    //  which it cannot see: the trapped chest, chest minecart and chest boat recipes then had an empty chest slot and
+    //  matched nothing until the next reload. So an ingredient that came out empty before the tags were bound is
+    //  looked up again once they are. This only runs where the items are computed, never on a cached call.
+    @Inject(method = "getItems", at = @At(value = "FIELD", target = "Lnet/minecraft/world/item/crafting/Ingredient;itemStacks:[Lnet/minecraft/world/item/ItemStack;", opcode = Opcodes.PUTFIELD, shift = At.Shift.AFTER))
+    private void sporran$rememberItemsResolvedBeforeTags(CallbackInfoReturnable<ItemStack[]> cir) {
+        if (this.itemStacks.length == 0 && (this.values.length != 0 || this.customIngredient != null)) {
+            IngredientInjection.EMPTY_BEFORE_TAGS.resolvedEmpty((Ingredient) (Object) this);
+        }
+    }
+
+    @Override
+    public void sporran$forgetItems() {
+        this.itemStacks = null;
+        this.stackingIds = null;
     }
 
     @ModifyExpressionValue(method = "getItems", at = @At(value = "INVOKE", target = "Ljava/util/stream/Stream;flatMap(Ljava/util/function/Function;)Ljava/util/stream/Stream;"))

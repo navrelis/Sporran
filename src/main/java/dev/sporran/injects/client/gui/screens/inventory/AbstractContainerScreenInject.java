@@ -26,6 +26,7 @@ import net.neoforged.neoforge.common.NeoForge;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
@@ -54,9 +55,13 @@ public abstract class AbstractContainerScreenInject extends Screen implements Ab
 
     // Sporran: Moved ContainerScreenEvent.Render.Background to ScreenInject
 
+    // Sporran: these run for the slots of an open container screen in every frame, resolve the override checks only once.
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$RENDER_SLOT_HIGHLIGHT_OVERRIDE = SporranHelper.MethodOverrideCheck.of(AbstractContainerScreen.class, "renderSlotHighlight", GuiGraphics.class, Slot.class, int.class, int.class, float.class);
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$RENDER_SLOT_CONTENTS_OVERRIDE = SporranHelper.MethodOverrideCheck.of(AbstractContainerScreen.class, "renderSlotContents", GuiGraphics.class, ItemStack.class, Slot.class, String.class);
+
     @WrapOperation(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/inventory/Slot;isHighlightable()Z"))
     private boolean sporran$checkShouldUseRenderHighlightOverride(Slot instance, Operation<Boolean> original, @Local(argsOnly = true) GuiGraphics guiGraphics, @Local(argsOnly = true, ordinal = 0) int mouseX, @Local(argsOnly = true, ordinal = 1) int mouseY, @Local(argsOnly = true) float partialTick) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(this.getClass(), AbstractContainerScreen.class, "renderSlotHighlight", GuiGraphics.class, Slot.class, int.class, int.class, float.class)) {
+        if (sporran$RENDER_SLOT_HIGHLIGHT_OVERRIDE.test(this.getClass())) {
             this.renderSlotHighlight(guiGraphics, instance, mouseX, mouseY, partialTick);
             return false;
         }
@@ -113,7 +118,7 @@ public abstract class AbstractContainerScreenInject extends Screen implements Ab
 
     @Inject(method = "renderSlot", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/inventory/Slot;isFake()Z"), cancellable = true)
     private void sporran$tryRenderSlotContents(GuiGraphics guiGraphics, Slot slot, CallbackInfo ci, @Local String s, @Local(ordinal = 0) ItemStack stack) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(this.getClass(), AbstractContainerScreen.class, "renderSlotContents", GuiGraphics.class, ItemStack.class, Slot.class, String.class)) {
+        if (sporran$RENDER_SLOT_CONTENTS_OVERRIDE.test(this.getClass())) {
             this.renderSlotContents(guiGraphics, stack, slot, s);
             guiGraphics.pose().popPose();
             ci.cancel();

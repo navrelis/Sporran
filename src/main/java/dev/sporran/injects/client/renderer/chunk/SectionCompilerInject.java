@@ -44,6 +44,9 @@ public abstract class SectionCompilerInject implements SectionCompilerInjection 
 
     @Unique private ThreadLocal<List<AddSectionGeometryEvent.AdditionalSectionRenderer>> sporran$additionalRenderers = ThreadLocal.withInitial(List::of);
 
+    // Sporran: runs for every block with a model while a section is compiled, resolve the override check only once.
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_RENDER_TYPES_OVERRIDE = SporranHelper.MethodOverrideCheck.of(IBakedModelExtension.class, "getRenderTypes", BlockState.class, RandomSource.class, ModelData.class);
+
     @Override
     public void sporran$setAdditionalRenderers(List<AddSectionGeometryEvent.AdditionalSectionRenderer> renderers) {
         this.sporran$additionalRenderers.set(renderers);
@@ -73,7 +76,7 @@ public abstract class SectionCompilerInject implements SectionCompilerInjection 
 
             ChunkRenderTypeSet renderTypes = model.getRenderTypes(state, randomSource, modelData);
             // Sporran: Fallback to Vanilla
-            if (modelData == ModelData.EMPTY && renderTypes.sporran$size() == 1 && ItemBlockRenderTypesInjection.getRenderLayers(state) == renderTypes && !SporranHelper.INSTANCE.hasMethodOverride(model.getClass(), IBakedModelExtension.class, "getRenderTypes", BlockState.class, RandomSource.class, ModelData.class)) {
+            if (modelData == ModelData.EMPTY && renderTypes.sporran$size() == 1 && ItemBlockRenderTypesInjection.getRenderLayers(state) == renderTypes && !sporran$GET_RENDER_TYPES_OVERRIDE.test(model.getClass())) {
                 return true;
             }
 

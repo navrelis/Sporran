@@ -23,9 +23,6 @@ object SporranHelper {
     private val cachedForgeClassNodes = Lazy.of { getForgeClassNodesInternal() }
     private var isForgeClassNodesCleared = false
 
-    // normally I'd expect a synchronized map to be faster, but in our case I guess concurrent hash map is faster?
-    private val cachedClassValues: MutableMap<OverrideData, ClassValue<Boolean>> = ConcurrentHashMap()
-
     /**
      * Sporran: [hasMethodOverride] compares [java.lang.reflect.Method.getName] against a string. Loom remaps method
      * references but never string literals, so a vanilla (Mojang) method name only matches in the dev environment;
@@ -50,43 +47,168 @@ object SporranHelper {
     @JvmField
     val LEVEL_READER_IS_EMPTY_BLOCK: String = mapVanillaMethodName("net.minecraft.class_4538", "method_22347", "(Lnet/minecraft/class_2338;)Z")
 
-    private fun checkAllElementsMatch(array: Array<*>, array2: Array<*>): Boolean {
-        if (array.size != array2.size)
-            return false
-
-        for ((i, first) in array.withIndex()) {
-            if (first != array2[i])
-                return false
-        }
-
-        return true
-    }
-
     fun hasMethodOverride(topClass: Class<*>, superClass: Class<*>, methodName: String, vararg methodArgs: Class<*>): Boolean {
-        return getOverrideClassValue(OverrideData(superClass, methodName, methodArgs)).get(topClass)
+        return MethodOverrideCache.hasMethodOverride(topClass, superClass, methodName, methodArgs, null)
     }
 
     fun hasMethodOverrideWithReturnType(topClass: Class<*>, superClass: Class<*>, methodName: String, returnType: Class<*>, vararg methodArgs: Class<*>): Boolean {
-        return getOverrideClassValue(OverrideData(superClass, methodName, methodArgs, returnType)).get(topClass)
+        return MethodOverrideCache.hasMethodOverride(topClass, superClass, methodName, methodArgs, returnType)
     }
 
-    // Sporran: look the ClassValue up before computeIfAbsent, whose lambda captured the arguments and so was allocated on
-    //  every call, even though the key is almost always cached already.
-    private fun getOverrideClassValue(overrideData: OverrideData): ClassValue<Boolean> {
-        return this.cachedClassValues[overrideData] ?: this.cachedClassValues.computeIfAbsent(overrideData, ::createOverrideClassValue)
-    }
+    /**
+     * Sporran: the cache behind [hasMethodOverride], [hasMethodOverrideWithReturnType] and [MethodOverrideCheck]. It is an
+     * object of its own that uses nothing of Fabric Loader or Minecraft, so a [MethodOverrideCheck] never initialises
+     * [SporranHelper], and so it can be unit tested (SporranHelper itself needs a running Fabric Loader).
+     */
+    internal object MethodOverrideCache {
+        // normally I'd expect a synchronized map to be faster, but in our case I guess concurrent hash map is faster?
+        private val cachedClassValues: MutableMap<OverrideData, ClassValue<Boolean>> = ConcurrentHashMap()
 
-    private fun createOverrideClassValue(overrideData: OverrideData): ClassValue<Boolean> {
-        val superClass = overrideData.superClass
-        val methodName = overrideData.methodName
-        val methodArgs = overrideData.methodArgs
-        val returnType = overrideData.returnType
+        // Sporran: hasMethodOverride built an OverrideData key on every call, only to look its ClassValue up in the map
+        //  above (hashing and comparing the argument types again each time). This table answers the same lookup straight
+        //  from the arguments, without creating anything. It only ever holds entries of cachedClassValues (same key, same
+        //  ClassValue), so the result is the same. The array is never changed once it is published: a new key replaces it
+        //  with a changed copy, which happens once per distinct check, so readers need no lock.
+        @Volatile
+        private var overrideLookupTable: Array<OverrideLookupEntry?> = arrayOfNulls(64)
+        private var overrideLookupSize = 0
+        private val overrideLookupLock = Any()
 
-        if (returnType == null) {
+        private fun checkAllElementsMatch(array: Array<*>, array2: Array<*>): Boolean {
+            if (array.size != array2.size)
+                return false
+
+            for (i in array.indices) {
+                if (array[i] != array2[i])
+                    return false
+            }
+
+            return true
+        }
+
+        /** [returnType] is null for [SporranHelper.hasMethodOverride]. */
+        fun hasMethodOverride(topClass: Class<*>, superClass: Class<*>, methodName: String, methodArgs: Array<out Class<*>>, returnType: Class<*>?): Boolean {
+            val classValue = findOverrideClassValue(superClass, methodName, methodArgs, returnType)
+                ?: registerOverrideClassValue(OverrideData(superClass, methodName, methodArgs, returnType))
+
+            return classValue.get(topClass)
+        }
+
+        // Sporran: look the ClassValue up before computeIfAbsent, whose lambda captured the arguments and so was allocated on
+        //  every call, even though the key is almost always cached already.
+        fun getOverrideClassValue(overrideData: OverrideData): ClassValue<Boolean> {
+            return this.cachedClassValues[overrideData] ?: this.cachedClassValues.computeIfAbsent(overrideData, ::createOverrideClassValue)
+        }
+
+        private fun overrideLookupIndex(tableSize: Int, superClass: Class<*>, methodName: String, methodArgs: Array<out Class<*>>, returnType: Class<*>?): Int {
+            var hash = superClass.hashCode()
+            hash = 31 * hash + methodName.hashCode()
+
+            for (methodArg in methodArgs) {
+                hash = 31 * hash + methodArg.hashCode()
+            }
+
+            hash = 31 * hash + returnType.hashCode()
+
+            return (hash xor (hash ushr 16)) and (tableSize - 1)
+        }
+
+        private fun findOverrideClassValue(superClass: Class<*>, methodName: String, methodArgs: Array<out Class<*>>, returnType: Class<*>?): ClassValue<Boolean>? {
+            val table = this.overrideLookupTable
+            var entry = table[overrideLookupIndex(table.size, superClass, methodName, methodArgs, returnType)]
+
+            while (entry != null) {
+                val overrideData = entry.overrideData
+
+                // The same comparison as OverrideData#equals.
+                if (overrideData.superClass == superClass && overrideData.returnType == returnType
+                    && overrideData.methodName == methodName && checkAllElementsMatch(overrideData.methodArgs, methodArgs)
+                ) {
+                    return entry.classValue
+                }
+
+                entry = entry.next
+            }
+
+            return null
+        }
+
+        private fun registerOverrideClassValue(overrideData: OverrideData): ClassValue<Boolean> {
+            val classValue = getOverrideClassValue(overrideData)
+
+            synchronized(this.overrideLookupLock) {
+                // Another thread may have added the same key in the meantime.
+                if (findOverrideClassValue(overrideData.superClass, overrideData.methodName, overrideData.methodArgs, overrideData.returnType) == null) {
+                    val oldTable = this.overrideLookupTable
+                    val newTable: Array<OverrideLookupEntry?>
+
+                    if ((this.overrideLookupSize + 1) * 2 > oldTable.size) {
+                        newTable = arrayOfNulls(oldTable.size * 2)
+
+                        for (oldEntry in oldTable) {
+                            var entry = oldEntry
+
+                            while (entry != null) {
+                                addOverrideLookupEntry(newTable, entry.overrideData, entry.classValue)
+                                entry = entry.next
+                            }
+                        }
+                    } else {
+                        newTable = oldTable.copyOf()
+                    }
+
+                    addOverrideLookupEntry(newTable, overrideData, classValue)
+                    this.overrideLookupSize++
+                    this.overrideLookupTable = newTable
+                }
+            }
+
+            return classValue
+        }
+
+        private fun addOverrideLookupEntry(table: Array<OverrideLookupEntry?>, overrideData: OverrideData, classValue: ClassValue<Boolean>) {
+            val index = overrideLookupIndex(table.size, overrideData.superClass, overrideData.methodName, overrideData.methodArgs, overrideData.returnType)
+            table[index] = OverrideLookupEntry(overrideData, classValue, table[index])
+        }
+
+        private class OverrideLookupEntry(val overrideData: OverrideData, val classValue: ClassValue<Boolean>, val next: OverrideLookupEntry?)
+
+        private fun createOverrideClassValue(overrideData: OverrideData): ClassValue<Boolean> {
+            val superClass = overrideData.superClass
+            val methodName = overrideData.methodName
+            val methodArgs = overrideData.methodArgs
+            val returnType = overrideData.returnType
+
+            if (returnType == null) {
+                return object : ClassValue<Boolean>() {
+                    override fun computeValue(type: Class<*>): Boolean {
+                        try {
+                            val method = type.getMethod(methodName, *methodArgs)
+
+                            // If the method is declared in the superClass itself (e.g., default interface method),
+                            // it's not an override - return false
+                            if (method.declaringClass == superClass) {
+                                return false
+                            }
+
+                            // If a Fabric mod has this method signature but is private, it could cause a game crash.
+                            return !Modifier.isPrivate(method.modifiers)
+                        } catch (_: Throwable) {
+                            return false
+                        }
+                    }
+                }
+            }
+
             return object : ClassValue<Boolean>() {
                 override fun computeValue(type: Class<*>): Boolean {
                     try {
-                        val method = type.getMethod(methodName, *methodArgs)
+                        val methods = type.methods.filter { it.name == methodName && it.parameterTypes.contentEquals(methodArgs) && it.returnType == returnType }
+
+                        if (methods.isEmpty())
+                            return false
+
+                        val method = methods.first()
 
                         // If the method is declared in the superClass itself (e.g., default interface method),
                         // it's not an override - return false
@@ -102,44 +224,22 @@ object SporranHelper {
                 }
             }
         }
-
-        return object : ClassValue<Boolean>() {
-            override fun computeValue(type: Class<*>): Boolean {
-                try {
-                    val methods = type.methods.filter { it.name == methodName && it.parameterTypes.contentEquals(methodArgs) && it.returnType == returnType }
-
-                    if (methods.isEmpty())
-                        return false
-
-                    val method = methods.first()
-
-                    // If the method is declared in the superClass itself (e.g., default interface method),
-                    // it's not an override - return false
-                    if (method.declaringClass == superClass) {
-                        return false
-                    }
-
-                    // If a Fabric mod has this method signature but is private, it could cause a game crash.
-                    return !Modifier.isPrivate(method.modifiers)
-                } catch (_: Throwable) {
-                    return false
-                }
-            }
-        }
     }
 
     /**
      * Sporran: a [hasMethodOverride] check for hot paths (several calls per entity per tick, e.g. pathfinding and fluid
-     * lookups). Keep it in a static field; [test] then only costs a [ClassValue] lookup, while [hasMethodOverride]
-     * allocates its varargs and a cache key on every call. It shares the cache of [hasMethodOverride], so the result is
-     * always the same, and it resolves lazily so that creating one in a static initializer doesn't touch [SporranHelper].
+     * lookups, or per block and per quad while chunks are meshed). Keep it in a static field; [test] then only costs a
+     * [ClassValue] lookup, while [hasMethodOverride] allocates its varargs array and finds the check again on every call.
+     * It shares the cache of [hasMethodOverride], so the result is always the same, and it resolves lazily: creating one
+     * in a static initializer doesn't look the method up (that happens per class on the first [test]), and neither
+     * creating nor asking one initialises [SporranHelper].
      */
     class MethodOverrideCheck private constructor(private val overrideData: OverrideData) {
         @Volatile
         private var classValue: ClassValue<Boolean>? = null
 
         fun test(topClass: Class<*>): Boolean {
-            val classValue = this.classValue ?: SporranHelper.getOverrideClassValue(overrideData).also { this.classValue = it }
+            val classValue = this.classValue ?: MethodOverrideCache.getOverrideClassValue(overrideData).also { this.classValue = it }
             return classValue.get(topClass)
         }
 

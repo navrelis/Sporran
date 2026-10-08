@@ -179,9 +179,12 @@ public abstract class BlockBehaviourInject implements BlockBehaviourInjection {
     public static abstract class PropertiesInject implements BlockBehaviourInjection.PropertiesInjection {
         @Unique private Supplier<ResourceKey<LootTable>> lootTableSupplier;
 
+        // Sporran: the default spawn check of every block, asked for every spawn attempt, resolve the override check only once.
+        @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_LIGHT_EMISSION_OVERRIDE = SporranHelper.MethodOverrideCheck.of(IBlockExtension.class, "getLightEmission", BlockState.class, BlockGetter.class, BlockPos.class);
+
         @WrapOperation(method = "method_26239", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/state/BlockState;getLightEmission()I"))
         private static int sporran$tryUseCustomLightEmission(BlockState instance, Operation<Integer> original, @Local(argsOnly = true) BlockGetter level, @Local(argsOnly = true) BlockPos pos) {
-            if (SporranHelper.INSTANCE.hasMethodOverride(instance.getBlock().getClass(), IBlockExtension.class, "getLightEmission", BlockState.class, BlockGetter.class, BlockPos.class)) {
+            if (sporran$GET_LIGHT_EMISSION_OVERRIDE.test(instance.getBlock().getClass())) {
                 return instance.getLightEmission(level, pos);
             }
 

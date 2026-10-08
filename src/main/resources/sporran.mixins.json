@@ -62,6 +62,7 @@
         "compat.nitrogen.NitrogenNeoForgeIdsMixin",
         "compat.porting_lib.FluidTypeMixin",
         "compat.porting_lib.LootModifierManagerMixin",
+        "compat.porting_lib.MobEffectInstanceCuresCycleMixin",
         "compat.porting_lib.PortingLibDataMapLoaderMixin",
         "compat.porting_lib.extensions.PortingLibBlockEntityExtensionsMixin",
         "compat.porting_lib.extensions.PortingLibBlockExtensionsMixin",

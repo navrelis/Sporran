@@ -10,6 +10,7 @@ import com.llamalad7.mixinextras.sugar.Local;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import dev.sporran.injections.client.renderer.entity.layers.ElytraLayerInjection;
 import dev.sporran.util.SporranHelper;
@@ -25,13 +26,17 @@ import net.minecraft.world.item.Items;
 public abstract class ElytraLayerInject<T extends LivingEntity> implements ElytraLayerInjection<T> {
     @Shadow @Final private static ResourceLocation WINGS_LOCATION;
 
+    // Sporran: these run for every entity with this layer in every frame, resolve the override checks only once.
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$SHOULD_RENDER_OVERRIDE = SporranHelper.MethodOverrideCheck.of(ElytraLayer.class, "shouldRender", ItemStack.class, LivingEntity.class);
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_ELYTRA_TEXTURE_OVERRIDE = SporranHelper.MethodOverrideCheck.of(ElytraLayer.class, "getElytraTexture", ItemStack.class, LivingEntity.class);
+
     @Definition(id = "itemStack", local = @Local(type = ItemStack.class))
     @Definition(id = "is", method = "Lnet/minecraft/world/item/ItemStack;is(Lnet/minecraft/world/item/Item;)Z")
     @Definition(id = "ELYTRA", field = "Lnet/minecraft/world/item/Items;ELYTRA:Lnet/minecraft/world/item/Item;")
     @Expression("itemStack.is(ELYTRA)")
     @WrapOperation(method = "render(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/world/entity/LivingEntity;FFFFFF)V", at = @At("MIXINEXTRAS:EXPRESSION"))
     private boolean sporran$checkShouldElytraRender(ItemStack instance, Item item, Operation<Boolean> original, @Local(argsOnly = true) T entity) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(this.getClass(), ElytraLayer.class, "shouldRender", ItemStack.class, LivingEntity.class)) {
+        if (sporran$SHOULD_RENDER_OVERRIDE.test(this.getClass())) {
             return this.shouldRender(instance, entity);
         }
 
@@ -40,7 +45,7 @@ public abstract class ElytraLayerInject<T extends LivingEntity> implements Elytr
 
     @ModifyExpressionValue(method = "render(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/world/entity/LivingEntity;FFFFFF)V", at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/entity/layers/ElytraLayer;WINGS_LOCATION:Lnet/minecraft/resources/ResourceLocation;"))
     private ResourceLocation sporran$tryUseCustomElytraTexture(ResourceLocation original, @Local ItemStack stack, @Local(argsOnly = true) T entity) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(this.getClass(), ElytraLayer.class, "getElytraTexture", ItemStack.class, LivingEntity.class)) {
+        if (sporran$GET_ELYTRA_TEXTURE_OVERRIDE.test(this.getClass())) {
             return this.getElytraTexture(stack, entity);
         }
 

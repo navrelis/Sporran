@@ -56,6 +56,13 @@ public interface HolderInject<T> extends IHolderExtension<T> {
             if (this == obj)
                 return true;
 
+            // Sporran: Neo's key equality exists for DeferredHolder interop. A Holder.Reference subclass is another
+            // mod's own holder (Puffish Attributes' alias wrapper, Puzzles Lib's LazyHolder) written for vanilla
+            // identity; equating it with the registry's Reference made Fabric's registry sync (a HashBiMap of
+            // id -> holder) reject the alias as a duplicate value, so every client failed to join a server.
+            if (obj instanceof Holder.Reference<?> && (obj.getClass() != Holder.Reference.class || ((Object) this).getClass() != Holder.Reference.class))
+                return false;
+
             return obj instanceof Holder<?> h && h.kind() == Holder.Kind.REFERENCE && ((IHolderExtension<T>) h).getKey() == this.key();
         }
 

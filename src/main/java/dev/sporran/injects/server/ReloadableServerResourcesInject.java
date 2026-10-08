@@ -32,6 +32,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import dev.sporran.injections.server.ReloadableServerResourcesInjection;
+import dev.sporran.injections.world.item.crafting.IngredientInjection;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -87,6 +88,13 @@ public class ReloadableServerResourcesInject implements ReloadableServerResource
                 }
             });
         }), function);
+    }
+
+    // Sporran: the tags are bound now. Ingredients that were asked for their items before that (while the recipes were
+    //  loaded) resolve them again; this runs before anything else can look at them with the bound tags.
+    @Inject(method = "updateRegistryTags()V", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/entity/AbstractFurnaceBlockEntity;invalidateCache()V"))
+    private void sporran$retryItemsResolvedBeforeTags(CallbackInfo ci) {
+        IngredientInjection.EMPTY_BEFORE_TAGS.tagsBound();
     }
 
     @Inject(method = "updateRegistryTags()V", at = @At("TAIL"))

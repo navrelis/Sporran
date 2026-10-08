@@ -4,6 +4,63 @@ Sporran is a modified version of Kilt v21.1.13 (https://github.com/KiltMC/Kilt, 
 page records what Sporran changed compared to that release: the fixes to NeoForge API behaviour, the renaming, and
 what is still known to be missing.
 
+## Version 1.0.5
+
+- Fixed: the screen shake of NeoForge mods spun the picture instead of tilting it. A NeoForge mod can tilt the camera
+  (the "roll") through `ViewportEvent.ComputeCameraAngles` and `Camera#setRotation(yaw, pitch, roll)`; it gives the
+  roll in degrees, like yaw and pitch. Sporran handed that number on in degrees where the game expects radians (and
+  with the sign the other way round): the roll was 57 times too strong. A boss slam that is meant to tilt the screen by
+  a few degrees turned it by a full circle and more, many times a second, so that nothing could be seen. The roll is now
+  converted as in NeoForge (`-roll * (PI / 180)`), so a roll of 7.5 degrees tilts the view by 7.5 degrees. Yaw and pitch
+  were always right.
+- Fixed: a camera roll is no longer kept in the view of a sleeping player (NeoForge sets it back to 0 there).
+
+## Version 1.0.4
+
+- Faster: chunk building with Sodium. For every block, face and model Sporran asks whether its class overrides a
+  NeoForge rendering method (ambient occlusion, quads, model data, render types, light emission, face hiding, fluid
+  overlay). Each of these questions created two short-lived objects and searched a map again; in a flight through a
+  large modpack they took 14 % of the working time of Sodium's chunk build threads and produced about a quarter of the
+  game's garbage. The answer is now looked up directly. The same was done for the vanilla chunk builder, the light
+  engine, the lightmap, the default spawn check of blocks and the item, armor, elytra, boat, camera and container
+  screen rendering.
+- Faster: all other checks of this kind (`SporranHelper.hasMethodOverride`) find their cached answer without creating a
+  key object first.
+- No change in behaviour from the two points above: every check gives the same answer as before.
+- Fixed: in the first world of a game run (and on a dedicated server until the next `/reload`) the trapped chest, chest
+  minecart, chest boat and bamboo chest raft recipes had an empty chest slot. Recipe viewers showed them without the
+  chest (EMI logged `Exception thrown setting remainders for minecraft:trapped_chest` and ten more), and a server sent
+  them to its players that way. These recipes use NeoForge's `neoforge:difference` ingredient ("wooden chests without
+  trapped chests"). An ingredient keeps the items it finds the first time it is asked, and a mod that looks at the
+  recipes while they are loaded (Sawmill, for example) asks before the item tags exist. Such a mod puts a plain tag
+  ingredient right again itself, but it cannot see the two tag ingredients inside the NeoForge one, which then stayed
+  empty. Ingredients that were asked before the tags of the first data pack load were bound now look their items up
+  again once they are. Ingredients that have items, and all later loads, are untouched.
+- Fixed: a server crash (`StackOverflowError: Ticking entity`, entity `minecraft:magma_cube`) when a magma cube swims
+  in a fluid other than lava that is not plain water, for example a fluid of a NeoForge mod (Astral Dimension spawns
+  magma cubes next to its own fluids). NeoForge's `jumpInFluid` gives a magma cube its own jump in lava and the jump
+  of any other mob in every other fluid; Sporran's version of the second case called itself without end. It now does
+  that jump once.
+- Fixed: a stack trace on every start (`AnalyzerException: Error at instruction 95: Insufficient maximum stack size`)
+  when another mod's mixin captures local variables in `LiquidBlock` (BetterNether does). Sporran makes the
+  `LiquidBlock` methods that read the block's fluid call `getFluid()` first and left the unused result on the stack,
+  one slot more than the method declares, so Mixin's analysis of the method failed. The result is now dropped again;
+  the call itself stays.
+
+## Version 1.0.3
+
+- Fixed: joining a dedicated server failed with "Registry remapping failed" (`value already present`) and then crashed
+  the client when another Fabric mod keeps its own `Holder.Reference` subclass in a registry, for example Puffish
+  Attributes' aliases for its old attribute ids. NeoForge's key-based `Holder.Reference` equality now only applies
+  between plain registry references and holders such as `DeferredHolder`; other mods' `Holder.Reference` subclasses
+  keep vanilla identity.
+
+## Version 1.0.2
+
+- Fixed: a crash on saving (`StackOverflowError` while saving a player or mob) when a stronger potion effect ran out
+  and a weaker one of the same type took over. This is caused by a bug in newer Porting Lib versions bundled by other
+  mods (for example Twilight Forest); Sporran now works around it.
+
 ## Version 1.0.1
 
 - Fixed: mobs between 0.75 and 1 block wide never walked along their path (they stood still while chasing or

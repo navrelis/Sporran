@@ -5,9 +5,12 @@ import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.Label
 import org.objectweb.asm.Opcodes
+import org.objectweb.asm.Type
 import org.objectweb.asm.tree.FieldInsnNode
 import org.objectweb.asm.tree.InsnList
+import org.objectweb.asm.tree.InsnNode
 import org.objectweb.asm.tree.MethodInsnNode
+import org.objectweb.asm.tree.MethodNode
 import org.objectweb.asm.tree.VarInsnNode
 import xyz.bluspring.fork.mm.api.ClassTinkerers
 import dev.sporran.Sporran
@@ -22,6 +25,28 @@ import java.lang.reflect.Modifier
 import java.net.URL
 
 class SporranEarlyRiser : Runnable {
+    companion object {
+        /**
+         * Sporran: makes an instance method start with a call of the given no-argument method on `this` whose result is
+         * not used. The result has to be popped again: left on the stack it sat below everything the method did, one
+         * slot more than the method's maximum stack size allows, and Mixin's analysis of the method for a
+         * local-capturing injection of another mod failed with "AnalyzerException: Insufficient maximum stack size"
+         * on every start. With the pop the stack is empty again where the original code starts, so the stack map
+         * frames of the method stay valid as they are.
+         */
+        @JvmStatic
+        fun insertDiscardedCall(methodNode: MethodNode, owner: String, name: String, descriptor: String) {
+            methodNode.instructions.insert(InsnList().apply {
+                this.add(VarInsnNode(Opcodes.ALOAD, 0))
+                this.add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, owner, name, descriptor))
+                this.add(InsnNode(if (Type.getReturnType(descriptor).size == 2) Opcodes.POP2 else Opcodes.POP))
+            })
+
+            // The call itself needs as many slots as its result (at least the one for `this`).
+            methodNode.maxStack = maxOf(methodNode.maxStack, Type.getReturnType(descriptor).size, 1)
+        }
+    }
+
     override fun run() {
         SporranTimings.time("early riser: processForgeClasses") { processForgeClasses() }
         NeoForgeDataPackExtensionsCompat.apply()
@@ -249,10 +274,7 @@ class SporranEarlyRiser : Runnable {
                         if (methodNode.instructions.none { a -> a is FieldInsnNode && a.name == mappingResolver.mapFieldName(namespace, liquidBlockIm, "field_11279", "L${flowingFluidIm.replace(".", "/")};") })
                             return@forEach
 
-                        methodNode.instructions.insertBefore(methodNode.instructions.first, InsnList().apply {
-                            this.add(VarInsnNode(Opcodes.ALOAD, 0))
-                            this.add(MethodInsnNode(Opcodes.INVOKEVIRTUAL, liquidBlock, "getFluid", "()L$flowingFluid;"))
-                        })
+                        insertDiscardedCall(methodNode, liquidBlock, "getFluid", "()L$flowingFluid;")
                     }
                 }
             }

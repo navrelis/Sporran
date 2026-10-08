@@ -42,9 +42,14 @@ public abstract class ModelBlockRendererInject implements ModelBlockRendererInje
     @Shadow public abstract void tesselateBlock(BlockAndTintGetter blockAndTintGetter, BakedModel bakedModel, BlockState blockState, BlockPos blockPos, PoseStack poseStack, VertexConsumer vertexConsumer, boolean bl, RandomSource randomSource, long l, int i);
     @Shadow public abstract void renderModel(PoseStack.Pose pose, VertexConsumer vertexConsumer, @Nullable BlockState blockState, BakedModel bakedModel, float f, float g, float h, int i, int j);
 
+    // Sporran: these run for every block and every quad list of a model that is tesselated, resolve the override checks only once.
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_LIGHT_EMISSION_OVERRIDE = SporranHelper.MethodOverrideCheck.of(Block.class, "getLightEmission", BlockState.class, BlockAndTintGetter.class, BlockPos.class);
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$USE_AMBIENT_OCCLUSION_OVERRIDE = SporranHelper.MethodOverrideCheck.of(BakedModel.class, "useAmbientOcclusion", BlockState.class, RenderType.class);
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_QUADS_OVERRIDE = SporranHelper.MethodOverrideCheck.of(BakedModel.class, "getQuads", BlockState.class, Direction.class, RandomSource.class, ModelData.class, RenderType.class);
+
     @WrapOperation(method = "tesselateBlock", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/state/BlockState;getLightEmission()I"))
     public int sporran$useForgeLightEmission(BlockState instance, Operation<Integer> original, @Local(argsOnly = true) BlockAndTintGetter level, @Local(argsOnly = true) BlockPos pos) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getBlock().getClass(), Block.class, "getLightEmission", BlockState.class, BlockAndTintGetter.class, BlockPos.class)) {
+        if (sporran$GET_LIGHT_EMISSION_OVERRIDE.test(instance.getBlock().getClass())) {
             return instance.getLightEmission(level, pos);
         }
 
@@ -53,7 +58,7 @@ public abstract class ModelBlockRendererInject implements ModelBlockRendererInje
 
     @WrapOperation(method = "tesselateBlock", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/resources/model/BakedModel;useAmbientOcclusion()Z"))
     public boolean sporran$useForgeAmbientOcclusion(BakedModel instance, Operation<Boolean> original, @Local(argsOnly = true) BlockState state, @Local(argsOnly = true) BlockAndTintGetter level, @Local(argsOnly = true) BlockPos pos) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getClass(), BakedModel.class, "useAmbientOcclusion", BlockState.class, RenderType.class)) {
+        if (sporran$USE_AMBIENT_OCCLUSION_OVERRIDE.test(instance.getClass())) {
             return Minecraft.useAmbientOcclusion() && switch (instance.useAmbientOcclusion(state, sporran$modelData.get(), sporran$renderType.get())) {
                 case TRUE -> true;
                 case DEFAULT -> state.getLightEmission(level, pos) == 0;
@@ -66,7 +71,7 @@ public abstract class ModelBlockRendererInject implements ModelBlockRendererInje
 
     @WrapOperation(method = {"tesselateWithAO", "tesselateWithoutAO", "renderModel"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/resources/model/BakedModel;getQuads(Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/core/Direction;Lnet/minecraft/util/RandomSource;)Ljava/util/List;"))
     public List<BakedQuad> sporran$getQuadsWithAOOnForgeAtomics(BakedModel instance, @Nullable BlockState state, @Nullable Direction direction, RandomSource randomSource, Operation<List<BakedQuad>> original) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getClass(), BakedModel.class, "getQuads", BlockState.class, Direction.class, RandomSource.class, ModelData.class, RenderType.class)) {
+        if (sporran$GET_QUADS_OVERRIDE.test(instance.getClass())) {
             return instance.getQuads(state, direction, randomSource, sporran$modelData.get(), sporran$renderType.get());
         }
 

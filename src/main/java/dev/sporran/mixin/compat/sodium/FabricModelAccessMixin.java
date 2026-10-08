@@ -14,6 +14,7 @@ import net.neoforged.neoforge.client.extensions.IBakedModelExtension;
 import net.neoforged.neoforge.client.model.data.ModelData;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
@@ -33,16 +34,22 @@ import net.minecraft.world.level.block.state.BlockState;
 @IfModLoaded("sodium")
 @Mixin(FabricModelAccess.class)
 public abstract class FabricModelAccessMixin {
+    // Sporran: Sodium's mesher asks these for every block, face and model on all of its worker threads, resolve the
+    //  override checks only once.
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_RENDER_TYPES_OVERRIDE = SporranHelper.MethodOverrideCheck.of(IBakedModelExtension.class, "getRenderTypes", BlockState.class, RandomSource.class, ModelData.class);
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_QUADS_OVERRIDE = SporranHelper.MethodOverrideCheck.of(IBakedModelExtension.class, "getQuads", BlockState.class, Direction.class, RandomSource.class, ModelData.class, RenderType.class);
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_MODEL_DATA_OVERRIDE = SporranHelper.MethodOverrideCheck.of(IBakedModelExtension.class, "getModelData", BlockAndTintGetter.class, BlockPos.class, BlockState.class, ModelData.class);
+
     @Inject(method = "getModelRenderTypes", at = @At("HEAD"), cancellable = true)
     private void sporran$tryGetNeoRenderTypes(BlockAndTintGetter level, BakedModel model, BlockState state, BlockPos pos, RandomSource random, SodiumModelData modelData, CallbackInfoReturnable<Iterable<RenderType>> cir) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(model.getClass(), IBakedModelExtension.class, "getRenderTypes", BlockState.class, RandomSource.class, ModelData.class)) {
+        if (sporran$GET_RENDER_TYPES_OVERRIDE.test(model.getClass())) {
             cir.setReturnValue(model.getRenderTypes(state, random, (ModelData) (Object) modelData));
         }
     }
 
     @Inject(method = "getQuads", at = @At("HEAD"), cancellable = true)
     private void sporran$tryGetNeoQuads(BlockAndTintGetter level, BlockPos pos, BakedModel model, BlockState state, Direction face, RandomSource random, RenderType renderType, SodiumModelData modelData, CallbackInfoReturnable<List<BakedQuad>> cir) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(model.getClass(), IBakedModelExtension.class, "getQuads", BlockState.class, Direction.class, RandomSource.class, ModelData.class, RenderType.class)) {
+        if (sporran$GET_QUADS_OVERRIDE.test(model.getClass())) {
             cir.setReturnValue(model.getQuads(state, face, random, (ModelData) (Object) modelData, renderType));
         }
     }
@@ -65,7 +72,7 @@ public abstract class FabricModelAccessMixin {
 
     @Inject(method = "getModelData", at = @At("HEAD"), cancellable = true)
     private void sporran$tryGetNeoModelData(LevelSlice slice, BakedModel model, BlockState state, BlockPos pos, SodiumModelData originalData, CallbackInfoReturnable<SodiumModelData> cir) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(model.getClass(), IBakedModelExtension.class, "getModelData", BlockAndTintGetter.class, BlockPos.class, BlockState.class, ModelData.class)) {
+        if (sporran$GET_MODEL_DATA_OVERRIDE.test(model.getClass())) {
             cir.setReturnValue((SodiumModelData) (Object) model.getModelData(slice, pos, state, (ModelData) (Object) originalData));
         }
     }

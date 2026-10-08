@@ -23,6 +23,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 import dev.sporran.injections.client.CameraInjection;
+import dev.sporran.util.CameraRoll;
 import dev.sporran.util.SporranHelper;
 
 @Mixin(Camera.class)
@@ -37,11 +38,14 @@ public abstract class CameraInject implements CameraInjection {
 
     @Unique private float sporran$roll;
 
+    // Sporran: runs in every frame, resolve the override check only once.
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$SET_ROTATION_OVERRIDE = SporranHelper.MethodOverrideCheck.of(Camera.class, "setRotation", float.class, float.class, float.class);
+
     @WrapOperation(method = "setup", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Camera;setRotation(FF)V", ordinal = 0))
     private void sporran$handleCameraAngleSetup(Camera instance, float yRot, float xRot, Operation<Void> original, @Local(argsOnly = true) float partialTick) {
         var cameraSetup = NeoForge.EVENT_BUS.post(new ViewportEvent.ComputeCameraAngles(instance, partialTick, yRot, xRot, 0));
 
-        if (SporranHelper.INSTANCE.hasMethodOverride(this.getClass(), Camera.class, "setRotation", float.class, float.class, float.class)) {
+        if (sporran$SET_ROTATION_OVERRIDE.test(this.getClass())) {
             instance.setRotation(cameraSetup.getYaw(), cameraSetup.getPitch(), cameraSetup.getRoll());
         } else {
             this.sporran$roll = cameraSetup.getRoll();
@@ -51,10 +55,21 @@ public abstract class CameraInject implements CameraInjection {
 
     @WrapOperation(method = "setup", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Camera;setRotation(FF)V", ordinal = 1))
     private void sporran$handleThirdPersonReverse(Camera instance, float yRot, float xRot, Operation<Void> original, @Local(argsOnly = true) float partialTick) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(this.getClass(), Camera.class, "setRotation", float.class, float.class, float.class)) {
+        if (sporran$SET_ROTATION_OVERRIDE.test(this.getClass())) {
             this.setRotation(yRot, xRot, -this.sporran$roll);
         } else {
             this.sporran$roll = -this.sporran$roll;
+            original.call(instance, yRot, xRot);
+        }
+    }
+
+    // Sporran: NeoForge's two-argument setRotation hands on a roll of 0, so the sleeping view does not keep the roll of the event.
+    @WrapOperation(method = "setup", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Camera;setRotation(FF)V", ordinal = 2))
+    private void sporran$handleSleepingView(Camera instance, float yRot, float xRot, Operation<Void> original) {
+        if (sporran$SET_ROTATION_OVERRIDE.test(this.getClass())) {
+            this.setRotation(yRot, xRot, 0.0F);
+        } else {
+            this.sporran$roll = 0.0F;
             original.call(instance, yRot, xRot);
         }
     }
@@ -72,9 +87,10 @@ public abstract class CameraInject implements CameraInjection {
         this.setRotation(yaw, pitch);
     }
 
+    // Sporran: the roll is in degrees, the argument is in radians, and NeoForge passes -roll * (PI / 180) (see CameraRoll).
     @ModifyArg(method = "setRotation", at = @At(value = "INVOKE", target = "Lorg/joml/Quaternionf;rotationYXZ(FFF)Lorg/joml/Quaternionf;"), index = 2)
-    private float sporran$addRollToRotation(float angleY) {
-        return angleY + this.sporran$roll;
+    private float sporran$addRollToRotation(float angleZ) {
+        return CameraRoll.addRoll(angleZ, this.sporran$roll);
     }
 
     @Override
