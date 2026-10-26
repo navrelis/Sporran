@@ -1,0 +1,38 @@
+/*
+ * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
+ */
+
+package dev.sporran.injects.server.network;
+
+import com.llamalad7.mixinextras.sugar.Local;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.network.PlayerChunkSender;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.neoforged.neoforge.common.world.LevelChunkAuxiliaryLightManager;
+import net.neoforged.neoforge.event.EventHooks;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+@Mixin(PlayerChunkSender.class)
+public abstract class PlayerChunkSenderInject {
+    @ModifyArg(method = "sendChunk", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/network/ServerGamePacketListenerImpl;send(Lnet/minecraft/network/protocol/Packet;)V"))
+    private static Packet<?> sporran$trySendLightData(Packet<?> original, @Local(argsOnly = true) LevelChunk chunk) {
+        if (original instanceof ClientboundLevelChunkWithLightPacket lightPacket) {
+            return ((LevelChunkAuxiliaryLightManager) chunk.getAuxLightManager(chunk.getPos())).sendLightDataTo(lightPacket);
+        }
+
+        return original;
+    }
+
+    @Inject(method = "sendChunk", at = @At("TAIL"))
+    private static void sporran$handleChunkSentEvent(ServerGamePacketListenerImpl packetListener, ServerLevel level, LevelChunk chunk, CallbackInfo ci) {
+        EventHooks.fireChunkSent(packetListener.player, chunk, level);
+    }
+}

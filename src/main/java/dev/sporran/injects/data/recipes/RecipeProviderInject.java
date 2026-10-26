@@ -1,0 +1,34 @@
+// TRACKED HASH: ea137127081f8e3b35dd94c07fdca929038853ea
+/*
+ * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
+ */
+
+package dev.sporran.injects.data.recipes;
+
+import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.data.CachedOutput;
+import net.minecraft.data.DataProvider;
+import net.minecraft.data.PackOutput;
+import net.minecraft.data.recipes.RecipeProvider;
+import net.neoforged.neoforge.common.conditions.ICondition;
+import net.neoforged.neoforge.common.conditions.WithConditions;
+import org.jetbrains.annotations.Nullable;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import dev.sporran.injections.advancements.AdvancementInjection;
+import dev.sporran.injections.data.recipes.RecipeProviderInjection;
+
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+
+@Mixin(RecipeProvider.class)
+public class RecipeProviderInject implements RecipeProviderInjection {
+    @Shadow public PackOutput.PathProvider advancementPathProvider;
+
+    @Override
+    public @Nullable CompletableFuture<?> buildAdvancement(CachedOutput output, HolderLookup.Provider provider, AdvancementHolder holder, ICondition... conditions) {
+        return DataProvider.saveStable(output, provider, AdvancementInjection.CONDITIONAL_CODEC, Optional.of(new WithConditions<>(holder.value(), conditions)), this.advancementPathProvider.json(holder.id()));
+    }
+}
