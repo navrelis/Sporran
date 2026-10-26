@@ -1,0 +1,48 @@
+/*
+ * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
+ */
+
+package dev.sporran.injects.world.level.entity;
+
+import com.llamalad7.mixinextras.sugar.Share;
+import com.llamalad7.mixinextras.sugar.ref.LocalLongRef;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.entity.EntityAccess;
+import net.minecraft.world.level.entity.EntitySection;
+import net.minecraft.world.level.entity.TransientEntitySectionManager;
+
+@Mixin(TransientEntitySectionManager.class)
+public abstract class TransientEntitySectionManagerInject {
+    @Mixin(TransientEntitySectionManager.Callback.class)
+    public abstract static class CallbackInject {
+        @Shadow
+        private long currentSectionKey;
+        @Unique
+        private Entity realEntity;
+
+        @Inject(method = "<init>", at = @At("TAIL"))
+        private void sporran$storeRealEntity(TransientEntitySectionManager persistentEntitySectionManager, EntityAccess entity, long currentSectionKey, EntitySection currentSection, CallbackInfo ci) {
+            this.realEntity = entity instanceof Entity e ? e : null;
+        }
+
+        @Inject(method = "onMove", at = @At("HEAD"))
+        private void sporran$storeOldSectionKey(CallbackInfo ci, @Share("oldSectionKey") LocalLongRef oldSectionKey) {
+            oldSectionKey.set(this.currentSectionKey);
+        }
+
+        // Sporran: handled via Porting Lib
+        /*@Inject(method = "onMove", at = @At("TAIL"))
+        private void sporran$callForgeEntityEnterSection(CallbackInfo ci, @Share("oldSectionKey") LocalLongRef oldSectionKey) {
+            if (oldSectionKey.get() != this.currentSectionKey && this.realEntity != null)
+                CommonHooks.onEntityEnterSection(this.realEntity, oldSectionKey.get(), this.currentSectionKey);
+        }*/
+    }
+}

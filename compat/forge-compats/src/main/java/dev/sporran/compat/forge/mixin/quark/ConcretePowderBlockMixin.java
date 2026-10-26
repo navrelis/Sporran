@@ -1,0 +1,35 @@
+/*
+ * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
+ */
+
+package dev.sporran.compat.forge.mixin.quark;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.block.ConcretePowderBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import org.violetmoon.quark.content.tweaks.module.MagmaKeepsConcretePowderModule;
+
+@Mixin(ConcretePowderBlock.class)
+public class ConcretePowderBlockMixin {
+    @Inject(method = "touchesLiquid", at = @At("HEAD"), cancellable = true)
+    private static void sporran$quark$touchesLiquid(BlockGetter pLevel, BlockPos pPos, CallbackInfoReturnable<Boolean> cbi) {
+        if(MagmaKeepsConcretePowderModule.preventSolidify(pLevel, pPos, pLevel.getBlockState(pPos))) {
+            cbi.setReturnValue(false);
+            cbi.cancel();
+        }
+    }
+
+    @Inject(method = "shouldSolidify", at = @At("HEAD"), cancellable = true)
+    private static void sporran$quark$shouldSolidify(BlockGetter pLevel, BlockPos pPos, BlockState pState, CallbackInfoReturnable<Boolean> cbi) {
+        if(MagmaKeepsConcretePowderModule.preventSolidify(pLevel, pPos, pState)) {
+            cbi.setReturnValue(false);
+            cbi.cancel();
+        }
+    }
+}

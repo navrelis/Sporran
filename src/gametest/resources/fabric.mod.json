@@ -1,0 +1,12 @@
+{
+    "schemaVersion": 1,
+    "id": "sporran-gametest",
+    "name": "Sporran (Testing)",
+    "version": "1.0.0",
+    "environment": "*",
+    "entrypoints": {
+        "fabric-gametest": [
+            "dev.sporran.test.SporranTesting"
+        ]
+    }
+}
