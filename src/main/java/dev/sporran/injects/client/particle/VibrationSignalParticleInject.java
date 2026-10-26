@@ -1,0 +1,26 @@
+/*
+ * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
+ */
+
+package dev.sporran.injects.client.particle;
+
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.particle.TextureSheetParticle;
+import net.minecraft.client.particle.VibrationSignalParticle;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+@Mixin(VibrationSignalParticle.class)
+public abstract class VibrationSignalParticleInject extends TextureSheetParticle {
+    protected VibrationSignalParticleInject(ClientLevel level, double x, double y, double z) {
+        super(level, x, y, z);
+    }
+
+    @Inject(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/Mth;lerp(DDD)D", ordinal = 2, shift = At.Shift.AFTER))
+    private void sporran$updateParticleBoundingBox(CallbackInfo ci) {
+        this.setPos(this.x, this.y, this.z);
+    }
+}

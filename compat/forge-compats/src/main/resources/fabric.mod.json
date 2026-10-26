@@ -1,0 +1,30 @@
+{
+    "schemaVersion": 1,
+    "id": "sporran_forge_compat",
+    "version": "${version}",
+    "name": "Sporran: Forge Mods Compat",
+    "description": "A compatibility layer to add support between Forge mods and Sporran/Fabric.",
+    "authors": [
+        "BluSpring"
+    ],
+    "license": "MIT",
+    "icon": "icon.png",
+    "environment": "*",
+    "entrypoints": {
+    },
+    "mixins": [
+        "sporran_forge_compats.mixins.json"
+    ],
+    "accessWidener": "sporran-forge-compat.accesswidener",
+    "depends": {
+        "fabricloader": ">=${loader_version}",
+        "minecraft": "${minecraft_version}",
+        "fabric-language-kotlin": ">=${fabric_kotlin_version}",
+        "sporran": "*"
+    },
+    "custom": {
+        "modmenu": {
+            "parent": "sporran"
+        }
+    }
+}

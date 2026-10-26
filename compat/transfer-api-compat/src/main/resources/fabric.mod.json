@@ -1,0 +1,32 @@
+{
+    "schemaVersion": 1,
+    "id": "sporran_transfer_compat",
+    "version": "${version}",
+    "name": "Sporran: Transfer API Compat",
+    "description": "A compatibility layer for Sporran designed to bridge the Forge and Fabric Transfer APIs together.",
+    "authors": [
+        "BluSpring"
+    ],
+    "license": "MIT",
+    "icon": "icon.png",
+    "environment": "*",
+    "entrypoints": {
+        "main": [
+            "dev.sporran.compat.transfer.TransferInterop"
+        ]
+    },
+    "mixins": [
+        "sporran_transfer_compat.mixins.json"
+    ],
+    "depends": {
+        "fabricloader": ">=${loader_version}",
+        "minecraft": "${minecraft_version}",
+        "fabric-language-kotlin": ">=${fabric_kotlin_version}",
+        "sporran": "*"
+    },
+    "custom": {
+        "modmenu": {
+            "parent": "sporran"
+        }
+    }
+}

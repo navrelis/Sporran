@@ -1,0 +1,26 @@
+/*
+ * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
+ */
+
+package dev.sporran.injections.data.loot;
+
+import net.minecraft.data.loot.LootTableProvider;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.storage.loot.LootTable;
+import net.minecraft.world.level.storage.loot.ValidationContext;
+import dev.sporran.processor.FabricInjectedInterface;
+
+import java.util.List;
+import java.util.Map;
+
+@FabricInjectedInterface(LootTableProvider.class)
+public interface LootTableProviderInjection {
+    default List<LootTableProvider.SubProviderEntry> getTables() {
+        throw new IllegalStateException();
+    }
+
+    default void validate(Map<ResourceLocation, LootTable> map, ValidationContext validationContext) {
+        throw new IllegalStateException();
+    }
+}
