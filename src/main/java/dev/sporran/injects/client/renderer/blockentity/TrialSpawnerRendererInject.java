@@ -1,0 +1,23 @@
+/*
+ * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
+ */
+
+package dev.sporran.injects.client.renderer.blockentity;
+
+import org.spongepowered.asm.mixin.Mixin;
+
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.TrialSpawnerRenderer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.entity.TrialSpawnerBlockEntity;
+import net.minecraft.world.phys.AABB;
+
+@Mixin(TrialSpawnerRenderer.class)
+public abstract class TrialSpawnerRendererInject implements BlockEntityRenderer<TrialSpawnerBlockEntity> {
+    @Override
+    public AABB getRenderBoundingBox(TrialSpawnerBlockEntity blockEntity) {
+        BlockPos pos = blockEntity.getBlockPos();
+        return new AABB(pos.getX() - 1, pos.getY() - 1, pos.getZ() - 1, pos.getX() + 2, pos.getY() + 2, pos.getZ() + 2);
+    }
+}

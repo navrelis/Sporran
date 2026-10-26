@@ -1,0 +1,26 @@
+/*
+ * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
+ */
+
+package dev.sporran.injects.client.particle;
+
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.particle.PortalParticle;
+import net.minecraft.client.particle.ReversePortalParticle;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+@Mixin(ReversePortalParticle.class)
+public abstract class ReversePortalParticleInject extends PortalParticle {
+    protected ReversePortalParticleInject(ClientLevel level, double x, double y, double z, double xSpeed, double ySpeed, double zSpeed) {
+        super(level, x, y, z, xSpeed, ySpeed, zSpeed);
+    }
+
+    @Inject(method = "tick", at = @At(value = "FIELD", target = "Lnet/minecraft/client/particle/ReversePortalParticle;z:D", ordinal = 2, shift = At.Shift.AFTER))
+    private void sporran$updateParticleBoundingBox(CallbackInfo ci) {
+        this.setPos(this.x, this.y, this.z);
+    }
+}
