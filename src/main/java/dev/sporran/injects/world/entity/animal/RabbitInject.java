@@ -1,0 +1,27 @@
+/*
+ * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
+ */
+
+package dev.sporran.injects.world.entity.animal;
+
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import net.minecraft.world.entity.animal.Rabbit;
+import net.neoforged.neoforge.event.EventHooks;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+
+@Mixin(Rabbit.class)
+public abstract class RabbitInject {
+    @Mixin(targets = "net.minecraft.world.entity.animal.Rabbit$RaidGardenGoal")
+    public abstract static class RaidGardenGoalInject { // Huh. Never knew this was a mechanic, the more you know I guess.
+        @Shadow @Final private Rabbit rabbit;
+
+        @ModifyExpressionValue(method = "canUse", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/GameRules;getBoolean(Lnet/minecraft/world/level/GameRules$Key;)Z"))
+        private boolean sporran$checkMobGriefing(boolean original) {
+            return original || EventHooks.canEntityGrief(this.rabbit.level(), this.rabbit);
+        }
+    }
+}

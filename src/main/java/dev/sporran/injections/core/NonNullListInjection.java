@@ -1,0 +1,24 @@
+/*
+ * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
+ */
+
+package dev.sporran.injections.core;
+
+import com.mojang.serialization.Codec;
+import net.minecraft.core.NonNullList;
+import dev.sporran.mixin.core.NonNullListAccessor;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.function.Function;
+
+public interface NonNullListInjection {
+    static <E> Codec<NonNullList<E>> codecOf(Codec<E> entryCodec) {
+        return entryCodec.listOf().xmap(NonNullListInjection::copyOf, Function.identity());
+    }
+
+    static <E> NonNullList<E> copyOf(Collection<? extends E> entries) {
+        return NonNullListAccessor.createNonNullList(List.copyOf(entries), null);
+    }
+}

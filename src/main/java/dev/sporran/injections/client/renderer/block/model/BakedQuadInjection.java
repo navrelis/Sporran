@@ -1,0 +1,27 @@
+/*
+ * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
+ */
+
+package dev.sporran.injections.client.renderer.block.model;
+
+import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.core.Direction;
+
+public interface BakedQuadInjection {
+    default boolean hasAmbientOcclusion() {
+        throw new IllegalStateException();
+    }
+
+    default void sporran$setAmbientOcclusion(boolean hasAo) {
+        throw new IllegalStateException();
+    }
+
+    static BakedQuad withAo(int[] is, int i, Direction direction, TextureAtlasSprite textureAtlasSprite, boolean bl, boolean hasAo) {
+        var quad = new BakedQuad(is, i, direction, textureAtlasSprite, bl);
+        ((BakedQuadInjection) quad).sporran$setAmbientOcclusion(hasAo);
+
+        return quad;
+    }
+}
