@@ -1,0 +1,83 @@
+name: Bug report
+description: Something in Sporran does not work, or a NeoForge mod misbehaves only when it runs through Sporran.
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Before you open this report
+
+        - Search the existing issues first. If you find the same problem, add your details there instead.
+        - Use the latest Sporran version and check that your problem still happens with it.
+        - Report problems here, **not** to the authors of the NeoForge mods you run through Sporran. They do not support Fabric.
+        - Remove other mods one by one if you can, and tell us which ones are needed to reproduce the problem.
+  - type: input
+    id: minecraft
+    attributes:
+      label: Minecraft version
+      placeholder: "1.21.1"
+    validations:
+      required: true
+  - type: input
+    id: loader
+    attributes:
+      label: Fabric Loader version
+      placeholder: "0.19.5"
+    validations:
+      required: true
+  - type: input
+    id: sporran
+    attributes:
+      label: Sporran version
+      description: The full version, as in the file name of the jar in your `mods` folder.
+      placeholder: "1.0.0+mc1.21.1"
+    validations:
+      required: true
+  - type: textarea
+    id: neoforge-mods
+    attributes:
+      label: NeoForge mods involved
+      description: List the NeoForge mods that are involved in the problem, with their versions (the jar file names are fine).
+      placeholder: |
+        Example:
+        some-neoforge-mod-1.21.1-2.3.4.jar
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What did you expect to happen? If it works on NeoForge, please say so.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: What happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Keep the steps short and clear, so that someone else can repeat them.
+      placeholder: |
+        1. Start a new world
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: latest.log
+      description: Drag the `latest.log` file from your game's `logs` folder into this box, or upload it to a paste service such as https://mclo.gs and paste the link.
+    validations:
+      required: true
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional information
+      description: The rest of your mod list (Fabric mods too), your Java version, screenshots, videos, or anything else that helps.

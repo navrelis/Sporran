@@ -1,0 +1,32 @@
+name: Feature request
+description: Ask for something Sporran should provide, for example a missing NeoForge API or a bridge to a Fabric API.
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Before you open this request
+
+        - Search the existing issues first. If you find the same request, add your details there instead.
+        - Use the latest Sporran version and check that it does not already have what you need.
+        - This form is for missing APIs and bridges. If a NeoForge mod does not work, use the bug report or crash report form instead.
+  - type: input
+    id: sporran
+    attributes:
+      label: Sporran version
+      placeholder: "1.0.0+mc1.21.1"
+    validations:
+      required: true
+  - type: textarea
+    id: feature
+    attributes:
+      label: What should be added
+      description: Describe the feature, and which NeoForge mods (with versions) need it, if any.
+    validations:
+      required: true
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional information
+      description: Anything else that helps to understand what you need.

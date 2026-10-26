@@ -1,0 +1,21 @@
+/*
+ * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
+ */
+
+package dev.sporran.injects.util.datafix.schemas;
+
+import com.mojang.datafixers.DSL;
+import com.mojang.datafixers.types.templates.TypeTemplate;
+import net.minecraft.util.datafix.schemas.V2832;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
+
+@Mixin(V2832.class)
+public abstract class V2832Inject {
+    @ModifyArg(method = "method_38837", at = @At(value = "INVOKE", target = "Lcom/mojang/datafixers/DSL;fields(Ljava/lang/String;Lcom/mojang/datafixers/types/templates/TypeTemplate;)Lcom/mojang/datafixers/types/templates/TypeTemplate;", ordinal = 1, remap = false))
+    private static TypeTemplate sporran$useOrInDsl(TypeTemplate original) {
+        return DSL.or(original, DSL.remainder());
+    }
+}

@@ -1,0 +1,44 @@
+{
+    "schemaVersion": 1,
+    "id": "sporran_fabric_compat",
+    "version": "${version}",
+    "name": "Sporran: Fabric Mods Compat",
+    "description": "A compatibility layer to add support between Sporran and other Fabric mods.",
+    "authors": [
+        "BluSpring"
+    ],
+    "license": "MIT",
+    "icon": "icon.png",
+    "environment": "*",
+    "entrypoints": {
+        "client": [
+            "dev.sporran.compat.fabric.SporranFabricCompatsClient"
+        ],
+        "main": [
+            "dev.sporran.compat.fabric.SporranFabricCompats"
+        ],
+        "mixinsquared": [
+            "dev.sporran.compat.fabric.SporranFabricCompatsMixinCanceller"
+        ],
+        "sporran:mod_container": [
+            {
+                "adapter": "kotlin",
+                "value": "dev.sporran.compat.fabric.architectury.SporranArchitecturyApiCompat"
+            }
+        ]
+    },
+    "mixins": [
+        "sporran_fabric_compats.mixins.json"
+    ],
+    "depends": {
+        "fabricloader": ">=${loader_version}",
+        "minecraft": "${minecraft_version}",
+        "fabric-language-kotlin": ">=${fabric_kotlin_version}",
+        "sporran": "*"
+    },
+    "custom": {
+        "modmenu": {
+            "parent": "sporran"
+        }
+    }
+}

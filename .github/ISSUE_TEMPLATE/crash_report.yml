@@ -1,0 +1,76 @@
+name: Crash report
+description: The game, the server or the launcher crashes or does not start with Sporran installed.
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Before you open this report
+
+        - Search the existing issues first. If you find the same crash, add your details there instead.
+        - Use the latest Sporran version and check that the crash still happens with it.
+        - Report crashes here, **not** to the authors of the NeoForge mods you run through Sporran. They do not support Fabric.
+  - type: input
+    id: minecraft
+    attributes:
+      label: Minecraft version
+      placeholder: "1.21.1"
+    validations:
+      required: true
+  - type: input
+    id: loader
+    attributes:
+      label: Fabric Loader version
+      placeholder: "0.19.5"
+    validations:
+      required: true
+  - type: input
+    id: sporran
+    attributes:
+      label: Sporran version
+      description: The full version, as in the file name of the jar in your `mods` folder.
+      placeholder: "1.0.0+mc1.21.1"
+    validations:
+      required: true
+  - type: textarea
+    id: neoforge-mods
+    attributes:
+      label: NeoForge mods and versions
+      description: List the NeoForge mods you have installed, with their versions (the jar file names are fine).
+      placeholder: |
+        Example:
+        some-neoforge-mod-1.21.1-2.3.4.jar
+    validations:
+      required: true
+  - type: textarea
+    id: crash-report
+    attributes:
+      label: Crash report
+      description: >-
+        Drag the newest file from your game's `crash-reports` folder into this box, or upload it to a paste service such
+        as https://mclo.gs and paste the link. A message like "Exit code 0" from your launcher is not a crash report.
+        If there is no crash report (for example when the game fails during start-up), leave this empty and attach the
+        `latest.log` below.
+  - type: textarea
+    id: log
+    attributes:
+      label: latest.log
+      description: Drag the `latest.log` file from your game's `logs` folder into this box, or upload it to a paste service and paste the link.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What were you doing when it crashed? Does it happen every time?
+      placeholder: |
+        1. Start the game with the mods above
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional information
+      description: The rest of your mod list (Fabric mods too), your Java version, or anything else that helps.
