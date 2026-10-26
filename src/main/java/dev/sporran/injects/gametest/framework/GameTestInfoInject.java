@@ -1,0 +1,29 @@
+/*
+ * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
+ */
+
+package dev.sporran.injects.gametest.framework;
+
+import org.jetbrains.annotations.Nullable;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+import net.minecraft.gametest.framework.GameTestInfo;
+import net.minecraft.world.level.block.entity.StructureBlockEntity;
+
+@Mixin(GameTestInfo.class)
+public abstract class GameTestInfoInject {
+    @Shadow @Nullable private StructureBlockEntity structureBlockEntity;
+
+    @Shadow
+    public abstract String getTestName();
+
+    @Inject(method = "prepareTestStructure", at = @At(value = "INVOKE", target = "Lnet/minecraft/gametest/framework/StructureUtils;addCommandBlockAndButtonToStartTest(Lnet/minecraft/core/BlockPos;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/Rotation;Lnet/minecraft/server/level/ServerLevel;)V"))
+    private void sporran$setMetadataToStructure(CallbackInfoReturnable<GameTestInfo> cir) {
+        this.structureBlockEntity.setMetaData(this.getTestName());
+    }
+}
