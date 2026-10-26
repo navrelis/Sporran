@@ -1,0 +1,31 @@
+/*
+ * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
+ */
+
+package dev.sporran.compat.create.mixin.flywheel;
+
+import com.moulberry.mixinconstraints.annotations.IfModLoaded;
+import net.neoforged.neoforge.common.extensions.IBlockExtension;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Pseudo;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import dev.sporran.util.SporranHelper;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.block.state.BlockState;
+
+@IfModLoaded("flywheel")
+@Pseudo
+@Mixin(targets = "dev.engine_room.flywheel.backend.FlwBackendXplatImpl")
+public abstract class FlywheelBackendXplatImplMixin {
+    @Inject(method = "getLightEmission", at = @At("HEAD"), cancellable = true)
+    private void sporran$flywheel$tryUseNeoLightEmission(BlockState state, BlockGetter level, BlockPos pos, CallbackInfoReturnable<Integer> cir) {
+        if (SporranHelper.INSTANCE.hasMethodOverrideWithReturnType(state.getBlock().getClass(), IBlockExtension.class, "getLightEmission", int.class, BlockState.class, BlockGetter.class, BlockPos.class)) {
+            cir.setReturnValue(state.getLightEmission(level, pos));
+        }
+    }
+}

@@ -1,0 +1,26 @@
+// TRACKED HASH: 18838234833312d3c610b6e9eee97297572aa05e
+/*
+ * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
+ */
+
+package dev.sporran.injects.client.multiplayer;
+
+import net.minecraft.client.multiplayer.PlayerInfo;
+import net.minecraft.world.level.GameType;
+import net.neoforged.neoforge.client.ClientHooks;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+@Mixin(PlayerInfo.class)
+public class PlayerInfoInject {
+    @Shadow private GameType gameMode;
+
+    @Inject(method = "setGameMode", at = @At("HEAD"))
+    public void sporran$hookGameTypeEvent(GameType pGameMode, CallbackInfo ci) {
+        ClientHooks.onClientChangeGameType((PlayerInfo) (Object) this, this.gameMode, pGameMode);
+    }
+}

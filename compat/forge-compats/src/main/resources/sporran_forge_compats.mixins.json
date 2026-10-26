@@ -1,0 +1,26 @@
+{
+    "required": true,
+    "minVersion": "0.8",
+    "package": "dev.sporran.compat.forge.mixin",
+    "compatibilityLevel": "JAVA_17",
+    "mixins": [
+        "cyclopscore.MinecraftHelpersMixin",
+        "cyclopscore.ModBaseMixin",
+        "kubejs.KubeJSMixin",
+        "quark.ConcretePowderBlockMixin",
+        "quark.ProjectileUtilMixin",
+        "structure_gel.StructureTemplateMixin",
+        "thirst.PotionItemMixin"
+    ],
+    "client": [
+        "twilightforest.ElytraLayerMixin",
+        "twilightforest.HumanoidArmorLayerMixin"
+    ],
+    "injectors": {
+        "defaultRequire": 1
+    },
+    "plugin": "dev.sporran.compat.forge.SporranForgeCompatMixinPlugin",
+    "mixinextras": {
+        "minVersion": "0.5.0-beta.5"
+	}
+}
