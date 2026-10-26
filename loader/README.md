@@ -1,3 +1,6 @@
+<!-- Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md. -->
+<!-- Based on Knit Loader by KiltMC (see VENDORED.md). Licensed under the MIT licence (loader/LICENSE). -->
+
 # Knit Loader
 
 A mod loader abstraction for bridge-type mods: it scans, sorts and injects mods made for another mod loader into the

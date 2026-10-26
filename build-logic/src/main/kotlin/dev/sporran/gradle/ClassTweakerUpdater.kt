@@ -1,3 +1,8 @@
+/*
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-26; see docs/CHANGES.md.
+ * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
+ */
+
 package dev.sporran.gradle
 
 import agency.highlysuspect.minivan.MinivanExt
@@ -101,9 +106,23 @@ object ClassTweakerUpdater {
         }
 
         // Now, we should combine everything together into one shared class tweaker.
+        // The change notice (two comment lines directly below the header) that tools/licence/add-change-notices.py
+        // wrote into the file must survive the rewrite below.
+        val existingNotice: List<String> = if (finalTweakerFile.exists())
+            finalTweakerFile.readLines().drop(1).take(2).let { notice ->
+                if (notice.size == 2 && notice[0].startsWith("# Changed by the Sporran project") && notice[1].startsWith("# Based on "))
+                    notice
+                else
+                    emptyList()
+            }
+        else emptyList()
+
         val classTweakerBuilder = StringBuilder()
         classTweakerBuilder.append("classTweaker v2 named")
         classTweakerBuilder.newLine()
+
+        for (line in existingNotice)
+            classTweakerBuilder.append(line).newLine()
 
         // Neo ATs
         neoWidenerFile.forEachLine {

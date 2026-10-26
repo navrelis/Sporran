@@ -1,3 +1,8 @@
+/*
+ * Changed by the Sporran project on 2026-09-30; see docs/CHANGES.md.
+ * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
+ */
+
 pluginManagement {
     repositories {
         maven("https://maven.fabricmc.net/") {

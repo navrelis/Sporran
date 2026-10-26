@@ -1,3 +1,6 @@
+<!-- Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md. -->
+<!-- Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1. -->
+
 # Sporran Compatibility Modules
 This folder contains several different compatibility layers designed specifically to
 bridge two mods with each other, and have configs to allow the user to pick and choose what they want.

@@ -4,7 +4,7 @@ Sporran is a modified version of Kilt 21.1.13 (https://github.com/KiltMC/Kilt), 
 
 Copyright (C) KiltMC and contributors (BluSpring, AlphaMode, Acuadragon100, Brickmaster1, Cartrigger, CephalonCosmic, embeddedt, ForestWolf99, ItsBlackGear, kallmetony, KorewaLidesu, ptk671, SettingDust, skyevg, SuperKnux)
 
-Modified files carry a dated change notice, and docs/CHANGES.md lists the changes made compared to Kilt 21.1.13.
+Modified files carry a dated change notice, and docs/CHANGES.md lists the changes made compared to Kilt 21.1.13. Modified files that cannot hold a comment (JSON, mappings, images) are listed with their dates in docs/CHANGED-FILES.md.
 
 NeoForge and FancyModLoader
 ---------------------------
