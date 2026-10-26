@@ -1,0 +1,21 @@
+{
+    "required": true,
+    "minVersion": "0.8",
+    "package": "dev.sporran.modifications",
+    "plugin": "dev.sporran.SporranMixinPlugin",
+    "compatibilityLevel": "JAVA_21",
+    "mixins": [
+    ],
+    "client": [
+    ],
+    "injectors": {
+        "defaultRequire": 1
+    },
+    "mixinPriority": 950,
+    "mixinextras": {
+        "minVersion": "0.5.0"
+    },
+    "overwrites": {
+        "conformVisibility": true
+    }
+}

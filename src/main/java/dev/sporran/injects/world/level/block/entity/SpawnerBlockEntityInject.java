@@ -1,0 +1,26 @@
+// TRACKED HASH: 1f339cc07d3074a4bb35df3381caf49d3b2c9d20
+/*
+ * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
+ */
+
+package dev.sporran.injects.world.level.block.entity;
+
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.SpawnerBlockEntity;
+import org.jetbrains.annotations.Nullable;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+
+@Mixin(SpawnerBlockEntity.class)
+public abstract class SpawnerBlockEntityInject {
+    @Mixin(targets = "net.minecraft.world.level.block.entity.SpawnerBlockEntity$1")
+    public static abstract class BaseSpawnerInject {
+
+        /*@Nullable
+        public BlockEntity getSpawnerBlockEntity() {
+            return this.field_27219;
+        }*/
+    }
+}

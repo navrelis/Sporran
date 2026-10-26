@@ -1,0 +1,26 @@
+/*
+ * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
+ */
+
+package dev.sporran.injects;
+
+import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
+import io.netty.util.ResourceLeakDetector;
+import net.minecraft.SharedConstants;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import dev.sporran.helpers.mixin.CreateStatic;
+
+import java.lang.management.ManagementFactory;
+
+@Mixin(SharedConstants.class)
+public abstract class SharedConstantsInject {
+    @CreateStatic
+    private static final boolean IS_RUNNING_WITH_JDWP = ManagementFactory.getRuntimeMXBean().getInputArguments().stream().anyMatch(str -> str.startsWith("-agentlib:jdwp"));
+
+    @WrapWithCondition(method = "<clinit>", at = @At(value = "INVOKE", target = "Lio/netty/util/ResourceLeakDetector;setLevel(Lio/netty/util/ResourceLeakDetector$Level;)V", remap = false))
+    private static boolean sporran$allowManualLevelSetting(ResourceLeakDetector.Level level) {
+        return System.getProperty("io.netty.leakDetection.level") == null;
+    }
+}
