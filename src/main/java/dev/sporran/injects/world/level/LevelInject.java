@@ -1,6 +1,6 @@
 // TRACKED HASH: 7ec032f8735b23aa563858eb4a3555caa9c5d7ff
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -25,6 +25,7 @@ import com.llamalad7.mixinextras.sugar.Local;
 import com.llamalad7.mixinextras.sugar.Share;
 import com.llamalad7.mixinextras.sugar.ref.LocalRef;
 import net.neoforged.neoforge.attachment.AttachmentHolder;
+import net.neoforged.neoforge.common.extensions.IBlockExtension;
 import net.neoforged.neoforge.common.extensions.ILevelExtension;
 import net.neoforged.neoforge.common.util.BlockSnapshot;
 import net.neoforged.neoforge.entity.PartEntity;
@@ -222,9 +223,10 @@ public abstract class LevelInject implements LevelAccessor, ILevelExtension, Lev
         return Arrays.stream(Direction.values()).iterator();
     }
 
+    // Sporran: asked against IBlockExtension, which declares onNeighborChange (no-op) and getWeakChanges (false) as defaults; against Block.class both were true for every block.
     @WrapOperation(method = "updateNeighbourForOutputSignal", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/state/BlockState;is(Lnet/minecraft/world/level/block/Block;)Z", ordinal = 0))
     public boolean sporran$checkForNeighbourChange(BlockState instance, Block block, Operation<Boolean> original, @Local(ordinal = 0, argsOnly = true) BlockPos blockPos, @Local(ordinal = 1) BlockPos directionPos) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getBlock().getClass(), Block.class, "onNeighborChange", BlockState.class, LevelReader.class, BlockPos.class, BlockPos.class)) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getBlock().getClass(), IBlockExtension.class, "onNeighborChange", BlockState.class, LevelReader.class, BlockPos.class, BlockPos.class)) {
             instance.onNeighborChange((Level) (Object) this, directionPos, blockPos);
             // Don't trigger the Vanilla neighbour change.
             return false;
@@ -235,7 +237,7 @@ public abstract class LevelInject implements LevelAccessor, ILevelExtension, Lev
 
     @WrapOperation(method = "updateNeighbourForOutputSignal", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/state/BlockState;is(Lnet/minecraft/world/level/block/Block;)Z", ordinal = 1))
     public boolean sporran$getWeakChange(BlockState instance, Block block, Operation<Boolean> original, @Local(ordinal = 1) BlockPos directionPos) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getBlock().getClass(), Block.class, "getWeakChanges", BlockState.class, LevelReader.class, BlockPos.class)) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getBlock().getClass(), IBlockExtension.class, "getWeakChanges", BlockState.class, LevelReader.class, BlockPos.class)) {
             return instance.getWeakChanges((Level) (Object) this, directionPos);
         }
 

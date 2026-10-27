@@ -1,6 +1,6 @@
 // TRACKED HASH: 0103ffc8bca3b91dd898021eb13bdca66921d3eb
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -35,6 +35,7 @@ import net.neoforged.neoforge.common.CommonHooks;
 import net.neoforged.neoforge.common.EffectCure;
 import net.neoforged.neoforge.common.EffectCures;
 import net.neoforged.neoforge.common.ItemAbilities;
+import net.neoforged.neoforge.common.extensions.IItemExtension;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.common.NeoForgeMod;
 import net.neoforged.neoforge.common.damagesource.DamageContainer;
@@ -966,9 +967,10 @@ public abstract class LivingEntityInject extends Entity implements ILivingEntity
         return CommonHooks.getProjectile((LivingEntity) (Object) this, weapon, original);
     }
 
+    // Sporran: asked against IItemExtension, which declares getFoodProperties and canDisableShield (below) as defaults; against Item.class both were true for every item.
     @WrapOperation(method = "eat(Lnet/minecraft/world/level/Level;Lnet/minecraft/world/item/ItemStack;)Lnet/minecraft/world/item/ItemStack;", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/item/ItemStack;get(Lnet/minecraft/core/component/DataComponentType;)Ljava/lang/Object;"))
     private Object sporran$tryGetFoodProperties(ItemStack instance, DataComponentType dataComponentType, Operation<Object> original) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getItem().getClass(), Item.class, "getFoodProperties", ItemStack.class, LivingEntity.class)) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getItem().getClass(), IItemExtension.class, "getFoodProperties", ItemStack.class, LivingEntity.class)) {
             return instance.getFoodProperties((LivingEntity) (Object) this);
         }
 
@@ -1012,7 +1014,7 @@ public abstract class LivingEntityInject extends Entity implements ILivingEntity
 
     @ModifyReturnValue(method = "canDisableShield", at = @At("RETURN"))
     private boolean sporran$checkCanDisableShield(boolean original) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(this.getMainHandItem().getItem().getClass(), Item.class, "canDisableShield", ItemStack.class, ItemStack.class, LivingEntity.class, LivingEntity.class)) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(this.getMainHandItem().getItem().getClass(), IItemExtension.class, "canDisableShield", ItemStack.class, ItemStack.class, LivingEntity.class, LivingEntity.class)) {
             return this.getMainHandItem().canDisableShield(this.useItem, (LivingEntity) (Object) this, (LivingEntity) (Object) this);
         }
 

@@ -1,5 +1,5 @@
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -24,6 +24,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.FireBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import org.spongepowered.asm.mixin.Intrinsic;
+import net.neoforged.neoforge.common.extensions.IBlockExtension;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -38,6 +39,8 @@ public abstract class FireBlockInject extends BaseFireBlock implements FireBlock
     @Shadow protected abstract void checkBurnOut(Level level, BlockPos pos, int chance, RandomSource random, int age);
 
     private final ThreadLocal<Direction> sporran$face = new ThreadLocal<>();
+    // Sporran: the checks below ask IBlockExtension, which declares getFlammability, onCaughtFire and getFireSpreadSpeed as defaults (vanilla's burn odds / ignite odds, and a no-op that
+    //  leaves TNT to TntBlockInject); against Block.class they were true for every block.
     @Unique private static final Reference2BooleanLinkedOpenHashMap<Class<? extends Block>> sporran$cachedFlammabilityOverride = new Reference2BooleanLinkedOpenHashMap<>();
     @Unique private static final Reference2BooleanLinkedOpenHashMap<Class<? extends Block>> sporran$cachedFireEventOverride = new Reference2BooleanLinkedOpenHashMap<>();
 
@@ -87,7 +90,7 @@ public abstract class FireBlockInject extends BaseFireBlock implements FireBlock
 
     @WrapOperation(method = "checkBurnOut", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/FireBlock;getBurnOdds(Lnet/minecraft/world/level/block/state/BlockState;)I"))
     private int sporran$checkFlammability(FireBlock instance, BlockState state, Operation<Integer> original, @Local(argsOnly = true) Level level, @Local(argsOnly = true) BlockPos pos) {
-        if (sporran$cachedFlammabilityOverride.computeIfAbsent(state.getBlock().getClass(), $ -> SporranHelper.INSTANCE.hasMethodOverride(state.getBlock().getClass(), Block.class, "getFlammability", BlockState.class, BlockGetter.class, BlockPos.class, Direction.class))) {
+        if (sporran$cachedFlammabilityOverride.computeIfAbsent(state.getBlock().getClass(), $ -> SporranHelper.INSTANCE.hasMethodOverride(state.getBlock().getClass(), IBlockExtension.class, "getFlammability", BlockState.class, BlockGetter.class, BlockPos.class, Direction.class))) {
             return state.getFlammability(level, pos, sporran$face.get());
         }
 
@@ -101,7 +104,7 @@ public abstract class FireBlockInject extends BaseFireBlock implements FireBlock
         if (block == null)
             return null;
 
-        if (sporran$cachedFireEventOverride.computeIfAbsent(block.getClass(), $ -> SporranHelper.INSTANCE.hasMethodOverride(block.getClass(), Block.class, "onCaughtFire", BlockState.class, Level.class, BlockPos.class, Direction.class, LivingEntity.class))) {
+        if (sporran$cachedFireEventOverride.computeIfAbsent(block.getClass(), $ -> SporranHelper.INSTANCE.hasMethodOverride(block.getClass(), IBlockExtension.class, "onCaughtFire", BlockState.class, Level.class, BlockPos.class, Direction.class, LivingEntity.class))) {
             instance.onCaughtFire(level, pos, sporran$face.get(), null);
             return null;
         }
@@ -111,7 +114,7 @@ public abstract class FireBlockInject extends BaseFireBlock implements FireBlock
 
     @WrapOperation(method = "getIgniteOdds(Lnet/minecraft/world/level/LevelReader;Lnet/minecraft/core/BlockPos;)I", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/FireBlock;getIgniteOdds(Lnet/minecraft/world/level/block/state/BlockState;)I"))
     private int sporran$tryCheckFireSpreadSpeed(FireBlock instance, BlockState state, Operation<Integer> original, @Local(argsOnly = true) LevelReader level, @Local(argsOnly = true) BlockPos pos, @Local Direction direction) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(state.getBlock().getClass(), Block.class, "getFireSpreadSpeed", BlockState.class, BlockGetter.class, BlockPos.class, Direction.class)) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(state.getBlock().getClass(), IBlockExtension.class, "getFireSpreadSpeed", BlockState.class, BlockGetter.class, BlockPos.class, Direction.class)) {
             return state.getFireSpreadSpeed(level, pos.relative(direction), direction.getOpposite());
         }
 

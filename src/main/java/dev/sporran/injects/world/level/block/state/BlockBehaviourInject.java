@@ -79,16 +79,18 @@ public abstract class BlockBehaviourInject implements BlockBehaviourInjection {
         return original.call(instance, explosion);
     }
 
+    // Sporran: the three onBlockExploded checks below used a lookup without parameters, which matches no method, so a NeoForge override was never honoured. They now name the real
+    //  signature (BlockState, Level, BlockPos, Explosion): an override replaces the setBlock + wasExploded of vanilla's onExplosionHit, every other block keeps vanilla's.
     @Inject(method = "onExplosionHit", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/Level;setBlock(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;I)Z"))
     private void sporran$tryUseNeoBlockExploded(BlockState state, Level level, BlockPos pos, Explosion explosion, BiConsumer<ItemStack, BlockPos> dropConsumer, CallbackInfo ci) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(state.getBlock().getClass(), IBlockExtension.class, "onBlockExploded")) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(state.getBlock().getClass(), IBlockExtension.class, "onBlockExploded", BlockState.class, Level.class, BlockPos.class, Explosion.class)) {
             state.onBlockExploded(level, pos, explosion);
         }
     }
 
     @WrapOperation(method = "onExplosionHit", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/Level;setBlock(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;I)Z"))
     private boolean sporran$avoidCallIfOverridden(Level instance, BlockPos pos, BlockState newState, int flags, Operation<Boolean> original, @Local(argsOnly = true) BlockState state) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(state.getBlock().getClass(), IBlockExtension.class, "onBlockExploded"))
+        if (SporranHelper.INSTANCE.hasMethodOverride(state.getBlock().getClass(), IBlockExtension.class, "onBlockExploded", BlockState.class, Level.class, BlockPos.class, Explosion.class))
             return false;
 
         return original.call(instance, pos, newState, flags);
@@ -96,7 +98,7 @@ public abstract class BlockBehaviourInject implements BlockBehaviourInjection {
 
     @WrapOperation(method = "onExplosionHit", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/Block;wasExploded(Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/Explosion;)V"))
     private void sporran$avoidCallIfOverridden(Block instance, Level level, BlockPos pos, Explosion explosion, Operation<Void> original, @Local(argsOnly = true) BlockState state) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(state.getBlock().getClass(), IBlockExtension.class, "onBlockExploded"))
+        if (SporranHelper.INSTANCE.hasMethodOverride(state.getBlock().getClass(), IBlockExtension.class, "onBlockExploded", BlockState.class, Level.class, BlockPos.class, Explosion.class))
             return;
 
         original.call(instance, level, pos, explosion);

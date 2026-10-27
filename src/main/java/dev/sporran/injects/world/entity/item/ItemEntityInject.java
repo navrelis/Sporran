@@ -1,5 +1,5 @@
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -140,9 +140,10 @@ public abstract class ItemEntityInject extends Entity implements ItemEntityInjec
         }
     }
 
+    // Sporran: IItemExtension#onDestroyed takes (ItemEntity, DamageSource); the ItemStack parameter this lookup used to list matched no method, so a NeoForge override was never honoured.
     @WrapOperation(method = "hurt", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/item/ItemStack;onDestroyed(Lnet/minecraft/world/entity/item/ItemEntity;)V"))
     private void sporran$tryCallNeoDestroyed(ItemStack instance, ItemEntity itemEntity, Operation<Void> original, @Local(argsOnly = true) DamageSource source) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getItem().getClass(), IItemExtension.class, "onDestroyed", ItemStack.class, ItemEntity.class, DamageSource.class)) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getItem().getClass(), IItemExtension.class, "onDestroyed", ItemEntity.class, DamageSource.class)) {
             instance.onDestroyed(itemEntity, source);
         } else {
             original.call(instance, itemEntity);

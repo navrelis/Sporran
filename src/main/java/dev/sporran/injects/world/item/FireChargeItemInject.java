@@ -1,5 +1,5 @@
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -55,7 +55,7 @@ public abstract class FireChargeItemInject extends Item {
     @Expression("(BlockState) blockState.setValue(LIT, true)")
     @ModifyExpressionValue(method = "useOn", at = @At("MIXINEXTRAS:EXPRESSION"))
     private BlockState sporran$tryUseCustomState(BlockState original, @Local BlockState state, @Share("blockstate2") LocalRef<BlockState> stateRef) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(state.getBlock().getClass(), IBlockExtension.class, "getToolModifiedState", UseOnContext.class, ItemAbility.class, boolean.class)) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(state.getBlock().getClass(), IBlockExtension.class, "getToolModifiedState", BlockState.class, UseOnContext.class, ItemAbility.class, boolean.class)) { // Sporran: the BlockState parameter was missing, so no override was ever found
             return stateRef.get();
         }
 

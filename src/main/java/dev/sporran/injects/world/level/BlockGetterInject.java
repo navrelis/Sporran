@@ -1,6 +1,6 @@
 // TRACKED HASH: 002bbb6e1c497349b378b18204f13731d00bfb13
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -11,8 +11,8 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.BlockGetter;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.neoforge.common.extensions.IBlockExtension;
 import net.neoforged.neoforge.common.extensions.IBlockGetterExtension;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -20,9 +20,10 @@ import dev.sporran.util.SporranHelper;
 
 @Mixin(BlockGetter.class)
 public interface BlockGetterInject extends IBlockGetterExtension {
+    // Sporran: asked against IBlockExtension, which declares getLightEmission as a default (state.getLightEmission(), what is replaced); against Block.class it was true for every block.
     @WrapOperation(method = "getLightEmission", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/state/BlockState;getLightEmission()I"))
     private int sporran$tryUseForgeEmission(BlockState instance, Operation<Integer> original, @Local(argsOnly = true) BlockPos pos) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getBlock().getClass(), Block.class, "getLightEmission", BlockState.class, BlockGetter.class, BlockPos.class)) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getBlock().getClass(), IBlockExtension.class, "getLightEmission", BlockState.class, BlockGetter.class, BlockPos.class)) {
             return instance.getLightEmission((BlockGetter) this, pos);
         }
 

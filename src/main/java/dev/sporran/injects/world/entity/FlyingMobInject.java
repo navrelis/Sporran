@@ -1,5 +1,5 @@
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -18,6 +18,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.neoforge.common.extensions.IBlockExtension;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import dev.sporran.util.SporranHelper;
@@ -37,9 +38,10 @@ public abstract class FlyingMobInject extends Mob {
         return state;
     }
 
+    // Sporran: asked against IBlockExtension, which declares getFriction as a default (block.getFriction(), what is replaced); against Block.class it was true for every block.
     @WrapOperation(method = "travel", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/Block;getFriction()F"))
     private float sporran$callForgeFrictionIfPossible(Block instance, Operation<Float> original, @Share("blockState") LocalRef<BlockState> stateRef, @Share("blockPos") LocalRef<BlockPos> posRef) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getClass(), Block.class, "getFriction", BlockState.class, LevelReader.class, BlockPos.class, Entity.class)) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getClass(), IBlockExtension.class, "getFriction", BlockState.class, LevelReader.class, BlockPos.class, Entity.class)) {
             return instance.getFriction(stateRef.get(), this.level(), posRef.get(), this);
         }
 

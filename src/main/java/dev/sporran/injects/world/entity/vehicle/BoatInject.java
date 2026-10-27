@@ -1,6 +1,6 @@
 // TRACKED HASH: c1c579e966fc78d57072df71b93acdf023e75c9e
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -12,6 +12,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import net.neoforged.fml.common.asm.enumextension.*;
+import net.neoforged.neoforge.common.extensions.IBlockExtension;
 import net.neoforged.neoforge.common.extensions.IBoatExtension;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Final;
@@ -76,9 +77,10 @@ public abstract class BoatInject extends Entity implements IBoatExtension {
         return original.call(instance, tag);
     }
 
+    // Sporran: asked against IBlockExtension, which declares getFriction as a default (block.getFriction(), what is replaced); against Block.class it was true for every block.
     @WrapOperation(method = "getGroundFriction", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/Block;getFriction()F"))
     public float sporran$useForgeFriction(Block instance, Operation<Float> original, @Local BlockState state, @Local BlockPos.MutableBlockPos mutableBlockPos) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getClass(), Block.class, "getFriction", BlockState.class, LevelReader.class, BlockPos.class, Entity.class)) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getClass(), IBlockExtension.class, "getFriction", BlockState.class, LevelReader.class, BlockPos.class, Entity.class)) {
             return instance.getFriction(state, this.level(), mutableBlockPos, (Boat) (Object) this);
         }
 

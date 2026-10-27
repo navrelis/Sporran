@@ -1,5 +1,5 @@
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -12,7 +12,7 @@ import com.llamalad7.mixinextras.sugar.Local;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.BlockGetter;
-import net.minecraft.world.level.block.Block;
+import net.neoforged.neoforge.common.extensions.IBlockExtension;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.pathfinder.PathType;
@@ -30,7 +30,8 @@ import dev.sporran.util.SporranHelper;
 @Mixin(WalkNodeEvaluator.class)
 public abstract class WalkNodeEvaluatorInject {
     // Sporran: runs for every neighbour of every evaluated path node, resolve the override check only once.
-    @Unique private static final SporranHelper.MethodOverrideCheck sporran$ADJACENT_BLOCK_PATH_TYPE_OVERRIDE = SporranHelper.MethodOverrideCheck.of(Block.class, "getAdjacentBlockPathType", BlockState.class, BlockGetter.class, BlockPos.class, Mob.class, PathType.class);
+    //  Asked against IBlockExtension, which declares getAdjacentBlockPathType as a default (vanilla's sweet berry bush / burning block rules); against Block.class it was true for every block.
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$ADJACENT_BLOCK_PATH_TYPE_OVERRIDE = SporranHelper.MethodOverrideCheck.of(IBlockExtension.class, "getAdjacentBlockPathType", BlockState.class, BlockGetter.class, BlockPos.class, Mob.class, PathType.class);
 
     @WrapOperation(method = "checkNeighbourBlocks", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/pathfinder/PathfindingContext;getPathTypeFromState(III)Lnet/minecraft/world/level/pathfinder/PathType;"))
     private static PathType sporran$tryGetAdjacentBlockPathType(PathfindingContext instance, int x, int y, int z, Operation<PathType> original, @Cancellable CallbackInfoReturnable<PathType> cir) {

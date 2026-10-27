@@ -1,5 +1,5 @@
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -47,7 +47,7 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
-import net.minecraft.world.level.block.Block;
+import net.neoforged.neoforge.common.extensions.IBlockExtension;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
@@ -69,9 +69,10 @@ public abstract class MultiPlayerGameModeInject {
             cir.setReturnValue(false);*/
     }
 
+    // Sporran: asked against IBlockExtension, which declares onDestroyedByPlayer and getSoundType as defaults whose bodies are what they replace; against Block.class both were true for every block.
     @WrapOperation(method = "destroyBlock", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/Level;setBlock(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;I)Z", ordinal = 0))
     private boolean sporran$callDestroyedByPlayer(Level instance, BlockPos pos, BlockState newState, int flags, Operation<Boolean> original, @Local BlockState state, @Local FluidState fluidState) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(state.getBlock().getClass(), Block.class, "onDestroyedByPlayer", BlockState.class, Level.class, BlockPos.class, Player.class, boolean.class, FluidState.class)) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(state.getBlock().getClass(), IBlockExtension.class, "onDestroyedByPlayer", BlockState.class, Level.class, BlockPos.class, Player.class, boolean.class, FluidState.class)) {
             return state.onDestroyedByPlayer(instance, pos, minecraft.player, false, fluidState);
         }
 
@@ -124,7 +125,7 @@ public abstract class MultiPlayerGameModeInject {
 
     @WrapOperation(method = "continueDestroyBlock", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/state/BlockState;getSoundType()Lnet/minecraft/world/level/block/SoundType;"))
     private SoundType sporran$handleGetSoundType(BlockState instance, Operation<SoundType> original, @Local(argsOnly = true) BlockPos pos) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getBlock().getClass(), Block.class, "getSoundType", BlockState.class, LevelReader.class, BlockPos.class, Entity.class)) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getBlock().getClass(), IBlockExtension.class, "getSoundType", BlockState.class, LevelReader.class, BlockPos.class, Entity.class)) {
             return instance.getSoundType(this.minecraft.level, pos, this.minecraft.player);
         }
 

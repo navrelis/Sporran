@@ -1,6 +1,6 @@
 // TRACKED HASH: 8a81156928e5ec0380e740212b565fcc26b30d8b
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -85,9 +85,10 @@ public abstract class PoweredRailBlockInject extends BaseRailBlock implements Po
         return original.call(instance, block) || instance.getBlock() instanceof PoweredRailBlock;
     }
 
+    // Sporran: asked against BaseRailBlock, where BaseRailBlockInject merges getRailDirection (against PoweredRailBlock.class it was true for every rail, as the method is declared in BaseRailBlock).
     @WrapOperation(method = "isSameRailWithPower", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/state/BlockState;getValue(Lnet/minecraft/world/level/block/state/properties/Property;)Ljava/lang/Comparable;", ordinal = 0))
     public Comparable sporran$getRailDirectionWithForge(BlockState instance, Property property, Operation<Comparable> original, @Local(argsOnly = true) Level level, @Local(argsOnly = true) BlockPos pos) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getBlock().getClass(), PoweredRailBlock.class, "getRailDirection", BlockState.class, BlockGetter.class, BlockPos.class, AbstractMinecart.class)) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getBlock().getClass(), BaseRailBlock.class, "getRailDirection", BlockState.class, BlockGetter.class, BlockPos.class, AbstractMinecart.class)) {
             return ((PoweredRailBlock) instance.getBlock()).getRailDirection(instance, level, pos, (AbstractMinecart) null);
         }
 

@@ -1,6 +1,6 @@
 // TRACKED HASH: 4b295056fcc0933cc21e852fd285a0e2f5c42bfe
 /*
- * Changed by the Sporran project between 2026-09-29 and 2026-10-04; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -17,6 +17,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.moulberry.mixinconstraints.annotations.IfModLoaded;
 import net.neoforged.neoforge.client.extensions.IBakedModelExtension;
 import net.neoforged.neoforge.client.model.data.ModelData;
+import net.neoforged.neoforge.common.extensions.IBlockExtension;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Dynamic;
 import org.spongepowered.asm.mixin.Mixin;
@@ -37,7 +38,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.BlockAndTintGetter;
-import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.state.BlockState;
 
 @Mixin(ModelBlockRenderer.class)
@@ -48,9 +49,11 @@ public abstract class ModelBlockRendererInject implements ModelBlockRendererInje
     @Shadow public abstract void renderModel(PoseStack.Pose pose, VertexConsumer vertexConsumer, @Nullable BlockState blockState, BakedModel bakedModel, float f, float g, float h, int i, int j);
 
     // Sporran: these run for every block and every quad list of a model that is tesselated, resolve the override checks only once.
-    @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_LIGHT_EMISSION_OVERRIDE = SporranHelper.MethodOverrideCheck.of(Block.class, "getLightEmission", BlockState.class, BlockAndTintGetter.class, BlockPos.class);
-    @Unique private static final SporranHelper.MethodOverrideCheck sporran$USE_AMBIENT_OCCLUSION_OVERRIDE = SporranHelper.MethodOverrideCheck.of(BakedModel.class, "useAmbientOcclusion", BlockState.class, RenderType.class);
-    @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_QUADS_OVERRIDE = SporranHelper.MethodOverrideCheck.of(BakedModel.class, "getQuads", BlockState.class, Direction.class, RandomSource.class, ModelData.class, RenderType.class);
+    //  Asked against the extension interfaces, which declare these as defaults (against Block.class / BakedModel.class they were true for every
+    //  class, or false because of a wrong parameter list: getLightEmission takes a BlockGetter, useAmbientOcclusion also takes the ModelData).
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_LIGHT_EMISSION_OVERRIDE = SporranHelper.MethodOverrideCheck.of(IBlockExtension.class, "getLightEmission", BlockState.class, BlockGetter.class, BlockPos.class);
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$USE_AMBIENT_OCCLUSION_OVERRIDE = SporranHelper.MethodOverrideCheck.of(IBakedModelExtension.class, "useAmbientOcclusion", BlockState.class, ModelData.class, RenderType.class);
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_QUADS_OVERRIDE = SporranHelper.MethodOverrideCheck.of(IBakedModelExtension.class, "getQuads", BlockState.class, Direction.class, RandomSource.class, ModelData.class, RenderType.class);
 
     @WrapOperation(method = "tesselateBlock", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/state/BlockState;getLightEmission()I"))
     public int sporran$useForgeLightEmission(BlockState instance, Operation<Integer> original, @Local(argsOnly = true) BlockAndTintGetter level, @Local(argsOnly = true) BlockPos pos) {

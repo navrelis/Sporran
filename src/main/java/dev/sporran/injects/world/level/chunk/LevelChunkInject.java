@@ -1,5 +1,5 @@
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -18,6 +18,7 @@ import net.neoforged.neoforge.attachment.AttachmentInternals;
 import net.neoforged.neoforge.attachment.AttachmentSync;
 import net.neoforged.neoforge.attachment.AttachmentType;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
+import net.neoforged.neoforge.common.extensions.IBlockEntityExtension;
 import net.neoforged.neoforge.common.world.AuxiliaryLightManager;
 import net.neoforged.neoforge.common.world.LevelChunkAuxiliaryLightManager;
 import org.jetbrains.annotations.Nullable;
@@ -102,9 +103,10 @@ public abstract class LevelChunkInject extends ChunkAccess implements IAttachmen
         this.auxLightManager.removeLightAt(pos);
     }
 
+    // Sporran: asked against IBlockEntityExtension, which declares handleUpdateTag as a default (loadWithComponents, what is replaced); against BlockEntity.class it was true for every block entity.
     @WrapOperation(method = "method_31716", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/entity/BlockEntity;loadWithComponents(Lnet/minecraft/nbt/CompoundTag;Lnet/minecraft/core/HolderLookup$Provider;)V"))
     private void sporran$tryLoadWithUpdateTag(BlockEntity instance, CompoundTag tag, HolderLookup.Provider registries, Operation<Void> original) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getClass(), BlockEntity.class, "handleUpdateTag", CompoundTag.class, HolderLookup.Provider.class)) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getClass(), IBlockEntityExtension.class, "handleUpdateTag", CompoundTag.class, HolderLookup.Provider.class)) {
             instance.handleUpdateTag(tag, registries);
         } else {
             original.call(instance, tag, registries);

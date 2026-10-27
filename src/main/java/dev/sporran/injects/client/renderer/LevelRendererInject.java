@@ -1,6 +1,6 @@
 // TRACKED HASH: 66d460a5ca67d57026ea83d7b1223b548ab9de3d
 /*
- * Changed by the Sporran project between 2026-09-29 and 2026-10-04; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -34,7 +34,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.LevelReader;
-import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -42,6 +42,7 @@ import net.minecraft.world.phys.HitResult;
 import net.neoforged.neoforge.client.ClientHooks;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.client.model.data.ModelData;
+import net.neoforged.neoforge.common.extensions.IBlockExtension;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.*;
@@ -259,9 +260,10 @@ public abstract class LevelRendererInject {
         this.outlineEffectRequested = true;
     }
 
+    // Sporran: asked against IBlockExtension, which declares getSoundType (and getLightEmission, below, with a BlockGetter) as a default; against Block.class it was true for every block.
     @WrapOperation(method = "levelEvent", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/state/BlockState;getSoundType()Lnet/minecraft/world/level/block/SoundType;"))
     private SoundType sporran$tryUseForgeSoundType(BlockState instance, Operation<SoundType> original, @Local(argsOnly = true) BlockPos pos) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getBlock().getClass(), Block.class, "getSoundType", BlockState.class, LevelReader.class, BlockPos.class, Entity.class)) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getBlock().getClass(), IBlockExtension.class, "getSoundType", BlockState.class, LevelReader.class, BlockPos.class, Entity.class)) {
             return instance.getSoundType(this.level, pos, null);
         }
 
@@ -269,7 +271,7 @@ public abstract class LevelRendererInject {
     }
 
     // Sporran: getLightColor runs for every lit face while chunks are meshed, resolve the override check only once.
-    @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_LIGHT_EMISSION_OVERRIDE = SporranHelper.MethodOverrideCheck.of(Block.class, "getLightEmission", BlockState.class, BlockAndTintGetter.class, BlockPos.class);
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_LIGHT_EMISSION_OVERRIDE = SporranHelper.MethodOverrideCheck.of(IBlockExtension.class, "getLightEmission", BlockState.class, BlockGetter.class, BlockPos.class);
 
     @WrapOperation(method = "getLightColor(Lnet/minecraft/world/level/BlockAndTintGetter;Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/core/BlockPos;)I", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/state/BlockState;getLightEmission()I"))
     private static int sporran$tryUseForgeLightEmission(BlockState instance, Operation<Integer> original, @Local(argsOnly = true) BlockAndTintGetter level, @Local(argsOnly = true) BlockPos pos) {

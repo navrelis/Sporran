@@ -1,5 +1,5 @@
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -18,7 +18,7 @@ import net.minecraft.core.dispenser.DispenseItemBehavior;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.DispensibleContainerItem;
-import net.minecraft.world.item.Item;
+import net.neoforged.neoforge.common.extensions.IDispensibleContainerItemExtension;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.DispenserBlock;
@@ -33,9 +33,10 @@ import dev.sporran.util.SporranHelper;
 public interface DispenseItemBehaviorInject {
     @Mixin(targets = "net/minecraft/core/dispenser/DispenseItemBehavior$6")
     public abstract static class BucketDispenseItemBehaviorInject {
+        // Sporran: asked against IDispensibleContainerItemExtension, which declares the 5-argument emptyContents as a default (against Item.class this was true for every item; BucketItem still counts, its merged override only forwards to the 4-argument method).
         @WrapOperation(method = "execute", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/item/DispensibleContainerItem;emptyContents(Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/phys/BlockHitResult;)Z"))
         private boolean sporran$tryForgeEmptyContents(DispensibleContainerItem instance, Player player, Level level, BlockPos blockPos, BlockHitResult hitResult, Operation<Boolean> original, @Local(argsOnly = true) ItemStack stack) {
-            if (SporranHelper.INSTANCE.hasMethodOverride(instance.getClass(), Item.class, "emptyContents", Player.class, Level.class, BlockPos.class, BlockHitResult.class, ItemStack.class)) {
+            if (SporranHelper.INSTANCE.hasMethodOverride(instance.getClass(), IDispensibleContainerItemExtension.class, "emptyContents", Player.class, Level.class, BlockPos.class, BlockHitResult.class, ItemStack.class)) {
                 return instance.emptyContents(player, level, blockPos, hitResult, stack);
             }
 

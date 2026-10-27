@@ -1,6 +1,6 @@
 // TRACKED HASH: debf6874a4415fcbb527c106a281c5bd27a0b454
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -24,6 +24,7 @@ import net.neoforged.neoforge.common.CommonHooks;
 import net.neoforged.neoforge.common.ItemAbility;
 import net.neoforged.neoforge.common.MutableDataComponentHolder;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.common.extensions.IItemExtension;
 import net.neoforged.neoforge.common.extensions.IItemStackExtension;
 import net.neoforged.neoforge.event.EventHooks;
 import net.neoforged.neoforge.event.entity.player.UseItemOnBlockEvent;
@@ -136,9 +137,12 @@ public abstract class ItemStackInject implements MutableDataComponentHolder, IIt
 
     // Sporran: Ignore wrapEncodingExceptions
 
+    // Sporran: the item hooks below ask IItemExtension, which declares getMaxStackSize, isDamaged, getDamage, setDamage, getMaxDamage and
+    //  getDefaultAttributeModifiers as defaults (their bodies are vanilla's); against Item.class every one of the checks was true for every item.
+
     @WrapOperation(method = "getMaxStackSize", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/item/ItemStack;getOrDefault(Lnet/minecraft/core/component/DataComponentType;Ljava/lang/Object;)Ljava/lang/Object;"))
     private Object tryUseForgeMaxStackSize(ItemStack instance, DataComponentType<Integer> type, Object fallback, Operation<Object> original) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getItem().getClass(), Item.class, "getMaxStackSize", ItemStack.class)) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getItem().getClass(), IItemExtension.class, "getMaxStackSize", ItemStack.class)) {
             return instance.getItem().getMaxStackSize((ItemStack) (Object) this);
         }
 
@@ -149,7 +153,7 @@ public abstract class ItemStackInject implements MutableDataComponentHolder, IIt
     @Expression("this.getDamageValue() > 0")
     @ModifyExpressionValue(method = "isDamaged", at = @At("MIXINEXTRAS:EXPRESSION"))
     private boolean tryUseIsDamaged(boolean original) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(getItem().getClass(), Item.class, "isDamaged", ItemStack.class)) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(getItem().getClass(), IItemExtension.class, "isDamaged", ItemStack.class)) {
             return getItem().isDamaged((ItemStack) (Object) this);
         }
         return original;
@@ -157,7 +161,7 @@ public abstract class ItemStackInject implements MutableDataComponentHolder, IIt
 
     @ModifyReturnValue(method = "getDamageValue", at = @At("RETURN"))
     private int tryUseItemGetDamage(int original) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(getItem().getClass(), Item.class, "getDamage", ItemStack.class)) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(getItem().getClass(), IItemExtension.class, "getDamage", ItemStack.class)) {
             return getItem().getDamage((ItemStack) (Object) this);
         }
         return original;
@@ -165,7 +169,7 @@ public abstract class ItemStackInject implements MutableDataComponentHolder, IIt
 
     @WrapOperation(method = "setDamageValue", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/item/ItemStack;set(Lnet/minecraft/core/component/DataComponentType;Ljava/lang/Object;)Ljava/lang/Object;"))
     private <T> Object trySetItemDamage(ItemStack instance, DataComponentType<? super T> component, T value, Operation<Object> original) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(getItem().getClass(), Item.class, "setDamage", ItemStack.class, int.class)) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(getItem().getClass(), IItemExtension.class, "setDamage", ItemStack.class, int.class)) {
             getItem().setDamage((ItemStack) (Object) this, (Integer) value);
             return null;
         }
@@ -175,7 +179,7 @@ public abstract class ItemStackInject implements MutableDataComponentHolder, IIt
 
     @ModifyReturnValue(method = "getMaxDamage", at = @At("RETURN"))
     private int tryItemGetMaxDamage(int original) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(getItem().getClass(), Item.class, "getMaxDamage", ItemStack.class)) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(getItem().getClass(), IItemExtension.class, "getMaxDamage", ItemStack.class)) {
             return getItem().getMaxDamage((ItemStack) (Object) this);
         }
         return original;
@@ -271,7 +275,7 @@ public abstract class ItemStackInject implements MutableDataComponentHolder, IIt
 
     @WrapOperation(method = "forEachModifier(Lnet/minecraft/world/entity/EquipmentSlotGroup;Ljava/util/function/BiConsumer;)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/item/Item;getDefaultAttributeModifiers()Lnet/minecraft/world/item/component/ItemAttributeModifiers;"))
     private ItemAttributeModifiers getDefaultModifiersAndComputeModifiedAttributesGroup(Item instance, Operation<ItemAttributeModifiers> original) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getClass(), Item.class, "getDefaultAttributeModifiers", ItemStack.class)) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getClass(), IItemExtension.class, "getDefaultAttributeModifiers", ItemStack.class)) {
             return CommonHooks.computeModifiedAttributes((ItemStack) (Object) this, getItem().getDefaultAttributeModifiers((ItemStack) (Object) this));
         }
         return CommonHooks.computeModifiedAttributes((ItemStack) (Object) this, original.call(instance));
@@ -284,7 +288,7 @@ public abstract class ItemStackInject implements MutableDataComponentHolder, IIt
 
     @WrapOperation(method = "forEachModifier(Lnet/minecraft/world/entity/EquipmentSlot;Ljava/util/function/BiConsumer;)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/item/Item;getDefaultAttributeModifiers()Lnet/minecraft/world/item/component/ItemAttributeModifiers;"))
     private ItemAttributeModifiers getDefaultModifiersAndComputeModifiedAttributes(Item instance, Operation<ItemAttributeModifiers> original) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getClass(), Item.class, "getDefaultAttributeModifiers", ItemStack.class)) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getClass(), IItemExtension.class, "getDefaultAttributeModifiers", ItemStack.class)) {
             return CommonHooks.computeModifiedAttributes((ItemStack) (Object) this, getItem().getDefaultAttributeModifiers((ItemStack) (Object) this));
         }
         return CommonHooks.computeModifiedAttributes((ItemStack) (Object) this, original.call(instance));

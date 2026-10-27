@@ -1,6 +1,6 @@
 // TRACKED HASH: 6b790991592a47c6c6a8e8be25116c80e58fd91d
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -15,6 +15,7 @@ import com.llamalad7.mixinextras.sugar.Local;
 import com.llamalad7.mixinextras.sugar.Share;
 import com.llamalad7.mixinextras.sugar.ref.LocalRef;
 import net.neoforged.neoforge.common.CommonHooks;
+import net.neoforged.neoforge.common.extensions.IBlockExtension;
 import net.neoforged.neoforge.common.util.TriState;
 import net.neoforged.neoforge.event.EventHooks;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
@@ -72,9 +73,10 @@ public abstract class ServerPlayerGameModeInject {
 		return original.call(instance, state, level, pos, player);
 	}
 
+	// Sporran: asked against IBlockExtension, which declares onDestroyedByPlayer (with its Level parameter) as a default whose server body is the removeBlock call it replaces; the old signature had no Level, so it never matched.
 	@WrapOperation(method = "destroyBlock", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerLevel;removeBlock(Lnet/minecraft/core/BlockPos;Z)Z"))
 	private boolean sporran$tryHandleDestroyedByPlayer(ServerLevel instance, BlockPos blockPos, boolean b, Operation<Boolean> original, @Local(ordinal = 1) BlockState state) {
-		if (SporranHelper.INSTANCE.hasMethodOverride(state.getBlock().getClass(), Block.class, "onDestroyedByPlayer", BlockState.class, BlockPos.class, Player.class, boolean.class, FluidState.class)) {
+		if (SporranHelper.INSTANCE.hasMethodOverride(state.getBlock().getClass(), IBlockExtension.class, "onDestroyedByPlayer", BlockState.class, Level.class, BlockPos.class, Player.class, boolean.class, FluidState.class)) {
 			return state.onDestroyedByPlayer(instance, blockPos, this.player, b, this.level.getFluidState(blockPos));
 		}
 

@@ -1,5 +1,5 @@
 /*
- * Changed by the Sporran project between 2026-09-29 and 2026-10-04; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -7,6 +7,7 @@ package dev.sporran.injects.client.renderer;
 
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import com.llamalad7.mixinextras.sugar.Local;
+import net.neoforged.neoforge.client.extensions.IDimensionSpecialEffectsExtension;
 import org.joml.Vector3f;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
@@ -17,13 +18,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import dev.sporran.util.SporranHelper;
 
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.DimensionSpecialEffects;
 import net.minecraft.client.renderer.LightTexture;
 
 @Mixin(LightTexture.class)
 public abstract class LightTextureInject {
     // Sporran: runs for each of the 256 pixels of the light texture whenever it is updated, resolve the override check only once.
-    @Unique private static final SporranHelper.MethodOverrideCheck sporran$ADJUST_LIGHTMAP_COLORS_OVERRIDE = SporranHelper.MethodOverrideCheck.of(DimensionSpecialEffects.class, "adjustLightmapColors", ClientLevel.class, float.class, float.class, float.class, float.class, int.class, int.class, Vector3f.class);
+    //  Asked against IDimensionSpecialEffectsExtension, which declares adjustLightmapColors as an empty default (against DimensionSpecialEffects.class it was true for every dimension).
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$ADJUST_LIGHTMAP_COLORS_OVERRIDE = SporranHelper.MethodOverrideCheck.of(IDimensionSpecialEffectsExtension.class, "adjustLightmapColors", ClientLevel.class, float.class, float.class, float.class, float.class, int.class, int.class, Vector3f.class);
 
     @Inject(method = "updateLightTexture", at = @At(value = "JUMP", opcode = Opcodes.IFLE, ordinal = 3))
     private void sporran$adjustLightmapColors(float partialTicks, CallbackInfo ci, @Local ClientLevel level,

@@ -1,5 +1,5 @@
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -17,6 +17,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.animal.Wolf;
 import net.minecraft.world.entity.player.Player;
+import net.neoforged.neoforge.common.extensions.IItemExtension;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -32,13 +33,14 @@ public abstract class WolfInject extends TamableAnimal {
         super(entityType, level);
     }
 
+    // Sporran: asked against IItemExtension, which declares getFoodProperties as a default (stack.get(FOOD), what is replaced) and the item's class (it asked the class of the ItemStack, which has no such method, so the check was never true).
     @Definition(id = "itemStack", local = @Local(type = ItemStack.class))
     @Definition(id = "get", method = "Lnet/minecraft/world/item/ItemStack;get(Lnet/minecraft/core/component/DataComponentType;)Ljava/lang/Object;")
     @Definition(id = "FOOD", field = "Lnet/minecraft/core/component/DataComponents;FOOD:Lnet/minecraft/core/component/DataComponentType;")
     @Expression("itemStack.get(FOOD)")
     @WrapOperation(method = "mobInteract", at = @At("MIXINEXTRAS:EXPRESSION"))
     private Object sporran$tryUseForgeFoodProperties(ItemStack instance, DataComponentType dataComponentType, Operation<Object> original, @Local ItemStack stack) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getClass(), Item.class, "getFoodProperties", ItemStack.class, LivingEntity.class)) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getItem().getClass(), IItemExtension.class, "getFoodProperties", ItemStack.class, LivingEntity.class)) {
             return instance.getFoodProperties(this);
         }
 

@@ -1,5 +1,5 @@
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -25,6 +25,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
+import net.neoforged.neoforge.common.extensions.IBlockExtension;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -36,9 +37,10 @@ public abstract class BlockItemInject extends Item implements BlockItemInjection
         super(properties);
     }
 
+    // Sporran: asked against IBlockExtension, which declares getSoundType as a default (state.getSoundType(), what is replaced); against Block.class it was true for every block.
     @WrapOperation(method = "place", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/state/BlockState;getSoundType()Lnet/minecraft/world/level/block/SoundType;"))
     private SoundType sporran$tryUseForgeSoundType(BlockState instance, Operation<SoundType> original, @Local Level level, @Local BlockPos pos, @Local Player player) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getBlock().getClass(), Block.class, "getSoundType", BlockState.class, LevelReader.class, BlockPos.class, Entity.class)) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getBlock().getClass(), IBlockExtension.class, "getSoundType", BlockState.class, LevelReader.class, BlockPos.class, Entity.class)) {
             return instance.getSoundType(level, pos, player);
         }
 
@@ -47,7 +49,7 @@ public abstract class BlockItemInject extends Item implements BlockItemInjection
 
     @WrapOperation(method = "place", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/item/BlockItem;getPlaceSound(Lnet/minecraft/world/level/block/state/BlockState;)Lnet/minecraft/sounds/SoundEvent;"))
     private SoundEvent sporran$tryUseForgePlaceSound(BlockItem instance, BlockState state, Operation<SoundEvent> original, @Local Level level, @Local BlockPos pos, @Local Player player) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getBlock().getClass(), Block.class, "getSoundType", BlockState.class, LevelReader.class, BlockPos.class, Entity.class)
+        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getBlock().getClass(), IBlockExtension.class, "getSoundType", BlockState.class, LevelReader.class, BlockPos.class, Entity.class)
             || SporranHelper.INSTANCE.hasMethodOverride(instance.getClass(), BlockItem.class, "getPlaceSound", BlockState.class, Level.class, BlockPos.class, Player.class)) {
             return this.getPlaceSound(state, level, pos, player);
         }

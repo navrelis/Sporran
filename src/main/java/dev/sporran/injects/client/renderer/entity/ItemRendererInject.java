@@ -1,6 +1,6 @@
 // TRACKED HASH: 709f6c8bf847a0de3a9f176c6e8340ac7efe60ac
 /*
- * Changed by the Sporran project between 2026-09-29 and 2026-10-04; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -25,6 +25,7 @@ import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.client.ClientHooks;
+import net.neoforged.neoforge.client.extensions.IBakedModelExtension;
 import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -45,7 +46,8 @@ public abstract class ItemRendererInject {
     @Shadow private static boolean hasAnimatedTexture(ItemStack stack) { throw new IllegalStateException(); };
 
     // Sporran: runs for every item rendered in a frame, resolve the override check only once.
-    @Unique private static final SporranHelper.MethodOverrideCheck sporran$APPLY_TRANSFORM_OVERRIDE = SporranHelper.MethodOverrideCheck.of(BakedModel.class, "applyTransform", ItemDisplayContext.class, PoseStack.class, Boolean.TYPE);
+    //  Asked against IBakedModelExtension, which declares applyTransform as a default (against BakedModel.class it was true for every model).
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$APPLY_TRANSFORM_OVERRIDE = SporranHelper.MethodOverrideCheck.of(IBakedModelExtension.class, "applyTransform", ItemDisplayContext.class, PoseStack.class, Boolean.TYPE);
 
     @WrapOperation(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/block/model/ItemTransform;apply(ZLcom/mojang/blaze3d/vertex/PoseStack;)V"))
     private void sporran$dontApplyTransformTwice(ItemTransform instance, boolean leftHand, PoseStack poseStack, Operation<Void> original, @Local(argsOnly = true) BakedModel model, @Share("transform") LocalBooleanRef shouldTransform) {
