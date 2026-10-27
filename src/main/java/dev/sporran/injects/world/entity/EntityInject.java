@@ -1,6 +1,6 @@
 // TRACKED HASH: 34fb617752c8022973f9dca4fb9eed32600931bf
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -35,6 +35,7 @@ import net.neoforged.neoforge.capabilities.EntityCapability;
 import net.neoforged.neoforge.common.CommonHooks;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.common.NeoForgeMod;
+import net.neoforged.neoforge.common.extensions.IBlockExtension;
 import net.neoforged.neoforge.common.extensions.IEntityExtension;
 import net.neoforged.neoforge.event.EventHooks;
 import net.neoforged.neoforge.event.entity.EntityEvent;
@@ -185,9 +186,10 @@ public abstract class EntityInject implements IEntityExtension, EntityInjection,
         return original.call(instance);
     }
 
+    // Sporran: asked against IBlockExtension, which declares getSoundType as a default (state.getSoundType(), what is replaced); against Block.class it was true for every block.
     @WrapOperation(method = "playStepSound", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/state/BlockState;getSoundType()Lnet/minecraft/world/level/block/SoundType;"))
     private SoundType sporran$useForgeSoundTypeIfPossible(BlockState instance, Operation<SoundType> original, @Local(argsOnly = true) BlockPos pos) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getBlock().getClass(), Block.class, "getSoundType", BlockState.class, LevelReader.class, BlockPos.class, Entity.class)) {
+        if (SporranHelper.INSTANCE.hasMethodOverride(instance.getBlock().getClass(), IBlockExtension.class, "getSoundType", BlockState.class, LevelReader.class, BlockPos.class, Entity.class)) {
             return instance.getSoundType(this.level(), pos, (Entity) (Object) this);
         }
 
@@ -263,12 +265,15 @@ public abstract class EntityInject implements IEntityExtension, EntityInjection,
         return original.setPos(pos);
     }
 
-    @Inject(method = "isEyeInFluid", at = @At("HEAD"), cancellable = true)
-    private void sporran$checkEyeInFluidType(TagKey<Fluid> fluidTag, CallbackInfoReturnable<Boolean> cir) {
+    // Sporran: was a HEAD cancel for every water/lava check, so other mods' hooks into isEyeInFluid never ran. Same
+    //  answer as NeoForge's patch (water and lava by fluid type), now applied to the result of the vanilla body.
+    @ModifyReturnValue(method = "isEyeInFluid", at = @At("RETURN"))
+    private boolean sporran$checkEyeInFluidType(boolean original, TagKey<Fluid> fluidTag) {
         if (fluidTag == FluidTags.WATER)
-            cir.setReturnValue(this.isEyeInFluidType(NeoForgeMod.WATER_TYPE.value()));
+            return this.isEyeInFluidType(NeoForgeMod.WATER_TYPE.value());
         else if (fluidTag == FluidTags.LAVA)
-            cir.setReturnValue(this.isEyeInFluidType(NeoForgeMod.LAVA_TYPE.value()));
+            return this.isEyeInFluidType(NeoForgeMod.LAVA_TYPE.value());
+        return original;
     }
 
     @Definition(id = "fluidHeight", field = "Lnet/minecraft/world/entity/Entity;fluidHeight:Lit/unimi/dsi/fastutil/objects/Object2DoubleMap;")

@@ -11,6 +11,31 @@ comes directly after it. The script `tools/licence/add-change-notices.py` (Pytho
 finds the modified files with git and refreshes these notices; `--check` only reports files whose notice is missing or
 out of date.
 
+## Unreleased
+
+More hooks that replaced vanilla code although no NeoForge mod needed them (continuation of 1.0.1):
+
+- Override checks: about 40 places asked "does this class override the NeoForge method" against the vanilla class
+  (`Item`, `Block`, `BakedModel`, `Fluid`, `BlockEntity`, `CommandSourceStack`, `DimensionSpecialEffects`, ...) while
+  the method is a default of a NeoForge extension interface, so the answer was always yes. They now ask against the
+  extension interface (or, where a Sporran mixin adds the method to a vanilla class, against that class). Among them:
+  sound types, block friction, fire spread, light emission, explosion resistance, neighbour changes, path finding,
+  item damage and stack size, food, shield disabling, bundle contents, lightmap colours. Places where NeoForge's
+  default does more than vanilla (supportsEnchantment for enchanted books, canHarvestBlock with its event,
+  canBoatInFluid, attribute tooltips, getToolModifiedState with item abilities) were left as they are.
+- Checks that could never be true because of a wrong parameter list now find real overrides: `onBlockExploded`,
+  `onDestroyedByPlayer` (server and client), `IItemExtension.onDestroyed`, `getLightEmission`, `useAmbientOcclusion`,
+  and `getToolModifiedState` for fire charges and flint and steel. Cats and wolves checked `getFoodProperties` on the
+  stack class instead of the item class.
+- Hoppers: when the container above or below is a plain vanilla container (NeoForge's `InvWrapper`/`SidedInvWrapper`
+  over a block entity or entity that is a `Container`), vanilla's `ejectItems`/`suckInItems` run again; NeoForge item
+  handlers of mods keep the NeoForge path.
+- `Entity.isEyeInFluid`, `Biome.getMobSettings`/`getGenerationSettings` and `VibrationSystem.getGameEventFrequency`
+  run their vanilla bodies; NeoForge's answer (fluid types, biome modifiers, the vibration frequency data map) is
+  applied to the result instead of replacing the method.
+
+The server self-test phase `vanillaHooks` also checks hoppers, `isAir`, `isEyeInFluid` and the vibration frequency.
+
 ## Sporran 1.0.1 (2026-10-27)
 
 Three hooks replaced vanilla code for every item, also for plain vanilla items that no NeoForge mod overrides or

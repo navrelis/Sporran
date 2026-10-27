@@ -1,11 +1,12 @@
 // TRACKED HASH: 65326a80010482966a2797124eab63fbaf21f71e
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
 package dev.sporran.injects.world.level.biome;
 
+import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import net.neoforged.neoforge.common.world.ModifiableBiomeInfo;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -53,13 +54,15 @@ public abstract class BiomeInject implements BiomeInjection {
         cir.setReturnValue(biome.modifiableBiomeInfo().getOriginalBiomeInfo().effects());
     }
 
-    @Inject(at = @At("HEAD"), method = "getMobSettings", cancellable = true)
-    public void sporran$getModifiableMobSettings(CallbackInfoReturnable<MobSpawnSettings> cir) {
-        cir.setReturnValue(modifiableBiomeInfo().get().mobSpawnSettings());
+    // Sporran: these replaced the vanilla getters at HEAD, so another mod's mixin into them never ran. The vanilla body
+    //  returns the original settings; swap in the biome-modifier result only when nothing else changed the value.
+    @ModifyReturnValue(at = @At("RETURN"), method = "getMobSettings")
+    public MobSpawnSettings sporran$getModifiableMobSettings(MobSpawnSettings original) {
+        return original == modifiableBiomeInfo().getOriginalBiomeInfo().mobSpawnSettings() ? modifiableBiomeInfo().get().mobSpawnSettings() : original;
     }
 
-    @Inject(at = @At("HEAD"), method = "getGenerationSettings", cancellable = true)
-    public void sporran$getModifiableGenerationSettings(CallbackInfoReturnable<BiomeGenerationSettings> cir) {
-        cir.setReturnValue(modifiableBiomeInfo().get().generationSettings());
+    @ModifyReturnValue(at = @At("RETURN"), method = "getGenerationSettings")
+    public BiomeGenerationSettings sporran$getModifiableGenerationSettings(BiomeGenerationSettings original) {
+        return original == modifiableBiomeInfo().getOriginalBiomeInfo().generationSettings() ? modifiableBiomeInfo().get().generationSettings() : original;
     }
 }

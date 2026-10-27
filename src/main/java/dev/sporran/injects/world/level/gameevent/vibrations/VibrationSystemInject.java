@@ -1,10 +1,11 @@
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
 package dev.sporran.injects.world.level.gameevent.vibrations;
 
+import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import net.neoforged.neoforge.registries.datamaps.builtin.NeoForgeDataMaps;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -19,25 +20,27 @@ import net.minecraft.world.level.gameevent.vibrations.VibrationSystem;
 
 @Mixin(VibrationSystem.class)
 public interface VibrationSystemInject {
-    @Inject(method = "getGameEventFrequency(Lnet/minecraft/core/Holder;)I", at = @At("HEAD"), cancellable = true)
-    private static void sporran$tryUseDataMapIfPossible(Holder<GameEvent> gameEvent, CallbackInfoReturnable<Integer> cir) {
+    // Sporran: NeoForge ships this data map for every vanilla game event, so the HEAD hooks replaced the vanilla method
+    //  on every call. The vanilla body runs now and the data map value (same numbers unless a data pack changes them)
+    //  is applied to its result.
+    @ModifyReturnValue(method = "getGameEventFrequency(Lnet/minecraft/core/Holder;)I", at = @At("RETURN"))
+    private static int sporran$tryUseDataMapIfPossible(int original, Holder<GameEvent> gameEvent) {
         var data = gameEvent.getData(NeoForgeDataMaps.VIBRATION_FREQUENCIES);
-
-        if (data != null) {
-            cir.setReturnValue(data.frequency());
-        }
+        return data != null ? data.frequency() : original;
     }
 
-    @Inject(method = "getGameEventFrequency(Lnet/minecraft/resources/ResourceKey;)I", at = @At("HEAD"), cancellable = true)
-    private static void sporran$tryUseDataMapIfPossible(ResourceKey<GameEvent> gameEvent, CallbackInfoReturnable<Integer> cir) {
+    @ModifyReturnValue(method = "getGameEventFrequency(Lnet/minecraft/resources/ResourceKey;)I", at = @At("RETURN"))
+    private static int sporran$tryUseDataMapIfPossible(int original, ResourceKey<GameEvent> gameEvent) {
         var holder = BuiltInRegistries.GAME_EVENT.getHolder(gameEvent);
 
         if (holder.isPresent()) {
             var data = holder.orElseThrow().getData(NeoForgeDataMaps.VIBRATION_FREQUENCIES);
 
             if (data != null) {
-                cir.setReturnValue(data.frequency());
+                return data.frequency();
             }
         }
+
+        return original;
     }
 }

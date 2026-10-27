@@ -4,12 +4,15 @@
  */
 
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on NeoForge by NeoForged, as ported by KiltMC (see VENDORED.md). Licensed under the GNU LGPL 2.1.
  */
 
 package net.neoforged.neoforge.items;
 
+import net.neoforged.neoforge.items.wrapper.SidedInvWrapper;
+import net.neoforged.neoforge.items.wrapper.InvWrapper;
+import net.minecraft.world.Container;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -46,7 +49,7 @@ public class VanillaInventoryCodeHooks {
         return getSourceItemHandler(level, dest)
                 .map(itemHandlerResult -> {
                     IItemHandler handler = itemHandlerResult.getKey();
-                    if (handler.sporran$isVanilla()) // Sporran avoid replacing vanilla logic
+                    if (handler.sporran$isVanilla() || sporran$isPlainContainerWrapper(handler, itemHandlerResult.getValue())) // Sporran avoid replacing vanilla logic
                         return null;
 
                     for (int i = 0; i < handler.getSlots(); i++) {
@@ -108,7 +111,9 @@ public class VanillaInventoryCodeHooks {
                 .map(destinationResult -> {
                     IItemHandler itemHandler = destinationResult.getKey();
                     Object destination = destinationResult.getValue();
-                    if (isFull(itemHandler)) {
+                    if (itemHandler.sporran$isVanilla() || sporran$isPlainContainerWrapper(itemHandler, destination)) {
+                        return false; // Sporran: vanilla's ejectItems moves the item (see sporran$isPlainContainerWrapper)
+                    } else if (isFull(itemHandler)) {
                         return false;
                     } else {
                         for (int i = 0; i < hopper.getContainerSize(); ++i) {
@@ -219,6 +224,17 @@ public class VanillaInventoryCodeHooks {
 
     private static Optional<Pair<IItemHandler, Object>> getSourceItemHandler(Level level, Hopper hopper) {
         return getItemHandlerAt(level, hopper.getLevelX(), hopper.getLevelY() + 1.0, hopper.getLevelZ(), Direction.DOWN);
+    }
+
+    /**
+     * Sporran: NeoForge registers these wrappers for every vanilla container (chests, barrels, furnaces, container
+     * minecarts, ...). Over a block entity or entity that is itself a {@link Container}, vanilla's hopper code finds the
+     * same container and does the same, so the hooks leave such targets to vanilla (and to every other mod's mixin into
+     * the hopper code) instead of taking over every hopper. Subclasses of the wrappers and other handlers keep the
+     * NeoForge path.
+     */
+    private static boolean sporran$isPlainContainerWrapper(IItemHandler handler, Object target) {
+        return target instanceof Container && (handler.getClass() == InvWrapper.class || handler.getClass() == SidedInvWrapper.class);
     }
 
     private static Optional<Pair<IItemHandler, Object>> getItemHandlerAt(Level worldIn, double x, double y, double z, final Direction side) {
