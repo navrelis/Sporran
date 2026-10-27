@@ -1,5 +1,5 @@
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -37,6 +37,10 @@ import net.minecraft.world.phys.BlockHitResult;
 
 @Mixin(BucketItem.class)
 public abstract class BucketItemInject extends Item implements BucketItemInjection {
+    // Sporran: canBlockContainFluid is protected, so ofDeclared: Class.getMethod (what hasMethodOverride uses) only finds public methods
+    //  and would never see an override. Both injectors below run on every bucket use, so resolve the check only once.
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$CAN_BLOCK_CONTAIN_FLUID_OVERRIDE = SporranHelper.MethodOverrideCheck.ofDeclared(BucketItem.class, "canBlockContainFluid", Player.class, Level.class, BlockPos.class, BlockState.class);
+
     @Shadow public Fluid content;
     @Shadow public abstract boolean emptyContents(@Nullable Player player, Level level, BlockPos pos, @Nullable BlockHitResult result);
 
@@ -59,7 +63,7 @@ public abstract class BucketItemInject extends Item implements BucketItemInjecti
     @Expression("blockState.getBlock() instanceof LiquidBlockContainer")
     @ModifyExpressionValue(method = "use", at = @At("MIXINEXTRAS:EXPRESSION"))
     private boolean sporran$tryCheckContainsFluid(boolean original, @Local(argsOnly = true) Player player, @Local(argsOnly = true) Level level, @Local(ordinal = 0) BlockPos pos, @Local BlockState state) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(this.getClass(), BucketItem.class, "canBlockContainFluid", Player.class, Level.class, BlockPos.class, BlockState.class)) {
+        if (sporran$CAN_BLOCK_CONTAIN_FLUID_OVERRIDE.test(this.getClass())) {
             return this.canBlockContainFluid(player, level, pos, state);
         }
 
@@ -71,7 +75,7 @@ public abstract class BucketItemInject extends Item implements BucketItemInjecti
     @Expression("this.content == WATER")
     @ModifyExpressionValue(method = "use", at = @At("MIXINEXTRAS:EXPRESSION"))
     private boolean sporran$tryUseAlternativeFluidCheck(boolean original, @Local(argsOnly = true) Player player, @Local(argsOnly = true) Level level, @Local(ordinal = 0) BlockPos pos, @Local BlockState state) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(this.getClass(), BucketItem.class, "canBlockContainFluid", Player.class, Level.class, BlockPos.class, BlockState.class)) {
+        if (sporran$CAN_BLOCK_CONTAIN_FLUID_OVERRIDE.test(this.getClass())) {
             return true;
         }
 

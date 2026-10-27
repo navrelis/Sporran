@@ -141,6 +141,90 @@ public class MethodOverrideCheckTest {
         public abstract void plain(int value);
     }
 
+    // ---- fixtures for the declared (protected method) checks --------------------------------------------------------
+
+    /** Like the NeoForge additions to vanilla classes: the hooks are protected, so Class#getMethod cannot see them. */
+    public static class Guarded {
+        protected void hook(int value) {
+        }
+
+        protected void hook(int value, String other) {
+        }
+    }
+
+    /** Overrides the protected method. */
+    public static class GuardedOverride extends Guarded {
+        @Override
+        protected void hook(int value) {
+        }
+    }
+
+    /** Overrides nothing. */
+    public static class GuardedPlain extends Guarded {
+    }
+
+    /** Overrides while the class in between does not. */
+    public static class GuardedGrandOverride extends GuardedPlain {
+        @Override
+        protected void hook(int value) {
+        }
+    }
+
+    /** Overrides nothing itself, its superclass does. */
+    public static class GuardedGrandInherit extends GuardedOverride {
+    }
+
+    /** Has methods of the same signature as hooks that are not overrides (they are not in Guarded, so private is legal). */
+    public static class GuardedHidden extends Guarded {
+        @SuppressWarnings("unused")
+        private void secret(int value) {
+        }
+
+        @SuppressWarnings("unused")
+        static void util(int value) {
+        }
+    }
+
+    /** Overrides a protected method that is generic in the superclass, so the class also has a synthetic bridge method. */
+    public static class GenericGuarded<T> {
+        protected void accept(T value) {
+        }
+    }
+
+    public static class StringGuarded extends GenericGuarded<String> {
+        @Override
+        protected void accept(String value) {
+        }
+    }
+
+    /** Has a protected method of the same name and arguments but is no Guarded. */
+    public static class GuardedLookalike {
+        protected void hook(int value) {
+        }
+    }
+
+    public interface Hook {
+        default void fire(int value) {
+        }
+
+        default void fireLater(int value) {
+        }
+    }
+
+    public interface SubHook extends Hook {
+        @Override
+        default void fire(int value) {
+        }
+
+        @Override
+        default void fireLater(int value) {
+        }
+    }
+
+    /** Gets the override of Hook only from an interface, so Class#getMethod finds it and no class declares it. */
+    public static class HookImpl implements SubHook {
+    }
+
     private static final List<Class<?>> TOP_CLASSES = List.of(
         Base.class, Direct.class, Middle.class, Leaf.class, Untouched.class, Overloaded.class, Covariant.class,
         ThroughInterface.class, Unrelated.class, AbstractTop.class, Extension.class, SubExtension.class,
@@ -152,6 +236,11 @@ public class MethodOverrideCheckTest {
     /** The body of {@link SporranHelper#hasMethodOverride}. */
     private static boolean hasMethodOverride(Class<?> topClass, Class<?> superClass, String methodName, Class<?>... methodArgs) {
         return SporranHelper.MethodOverrideCache.INSTANCE.hasMethodOverride(topClass, superClass, methodName, methodArgs, null);
+    }
+
+    /** The body of {@link SporranHelper#hasDeclaredMethodOverride}. */
+    private static boolean hasDeclaredMethodOverride(Class<?> topClass, Class<?> superClass, String methodName, Class<?>... methodArgs) {
+        return SporranHelper.MethodOverrideCache.INSTANCE.hasDeclaredMethodOverride(topClass, superClass, methodName, methodArgs);
     }
 
     /** The body of {@link SporranHelper#hasMethodOverrideWithReturnType}. */
@@ -283,6 +372,80 @@ public class MethodOverrideCheckTest {
         assertFalse(SporranHelper.MethodOverrideCheck.withReturnType(Base.class, "returned", String.class).test(Untouched.class));
     }
 
+    // ---- declared checks (hasDeclaredMethodOverride, MethodOverrideCheck.ofDeclared) ------------------------------------
+
+    @Test
+    public void declaredFindsProtectedOverrides() {
+        // overridden directly, protected
+        assertTrue(hasDeclaredMethodOverride(GuardedOverride.class, Guarded.class, "hook", int.class));
+        // not overridden
+        assertFalse(hasDeclaredMethodOverride(GuardedPlain.class, Guarded.class, "hook", int.class));
+        assertFalse(hasDeclaredMethodOverride(GuardedPlain.class, Guarded.class, "hook", int.class, String.class));
+        // overridden in the class below while the one in between does not
+        assertTrue(hasDeclaredMethodOverride(GuardedGrandOverride.class, Guarded.class, "hook", int.class));
+        assertFalse(hasDeclaredMethodOverride(GuardedGrandOverride.class, Guarded.class, "hook", int.class, String.class));
+        // inherited override
+        assertTrue(hasDeclaredMethodOverride(GuardedGrandInherit.class, Guarded.class, "hook", int.class));
+        // declared only in the superclass: not an override, for the superclass itself as well
+        assertFalse(hasDeclaredMethodOverride(Guarded.class, Guarded.class, "hook", int.class));
+        // no such method, other arguments
+        assertFalse(hasDeclaredMethodOverride(GuardedOverride.class, Guarded.class, "missing", int.class));
+        assertFalse(hasDeclaredMethodOverride(GuardedOverride.class, Guarded.class, "hook", long.class));
+        // private and static methods of that name are no overrides
+        assertFalse(hasDeclaredMethodOverride(GuardedHidden.class, Guarded.class, "secret", int.class));
+        assertFalse(hasDeclaredMethodOverride(GuardedHidden.class, Guarded.class, "util", int.class));
+        // not a subclass of the superclass at all
+        assertFalse(hasDeclaredMethodOverride(GuardedLookalike.class, Guarded.class, "hook", int.class));
+        assertFalse(hasDeclaredMethodOverride(Object.class, Guarded.class, "hook", int.class));
+        assertFalse(hasDeclaredMethodOverride(int.class, Guarded.class, "hook", int.class));
+        // the synthetic bridge accept(Object) only exists because StringGuarded overrides the generic method, so it counts
+        assertTrue(hasDeclaredMethodOverride(StringGuarded.class, GenericGuarded.class, "accept", Object.class));
+        assertTrue(hasDeclaredMethodOverride(StringGuarded.class, GenericGuarded.class, "accept", String.class));
+
+        // the prepared check answers the same, also when it is asked first
+        SporranHelper.MethodOverrideCheck prepared = SporranHelper.MethodOverrideCheck.ofDeclared(Guarded.class, "hook", int.class);
+
+        assertTrue(prepared.test(GuardedOverride.class));
+        assertTrue(prepared.test(GuardedGrandOverride.class));
+        assertTrue(prepared.test(GuardedGrandInherit.class));
+        assertFalse(prepared.test(GuardedPlain.class));
+        assertFalse(prepared.test(Guarded.class));
+        assertFalse(prepared.test(GuardedLookalike.class));
+        assertTrue(SporranHelper.MethodOverrideCheck.ofDeclared(GenericGuarded.class, "accept", String.class).test(StringGuarded.class));
+    }
+
+    @Test
+    public void declaredAndPublicChecksDoNotShareResults() {
+        // The public lookup cannot see a protected method at all, which is why the declared one exists.
+        assertFalse(hasMethodOverride(GuardedOverride.class, Guarded.class, "hook", int.class));
+        assertTrue(hasDeclaredMethodOverride(GuardedOverride.class, Guarded.class, "hook", int.class));
+        assertFalse(SporranHelper.MethodOverrideCheck.of(Guarded.class, "hook", int.class).test(GuardedOverride.class));
+        assertTrue(SporranHelper.MethodOverrideCheck.ofDeclared(Guarded.class, "hook", int.class).test(GuardedOverride.class));
+
+        // The other way round: found through an interface, where no class declares the method. Asked public first for
+        // "fire" and declared first for "fireLater", so neither order may decide the answer of the other.
+        assertTrue(hasMethodOverride(HookImpl.class, Hook.class, "fire", int.class));
+        assertFalse(hasDeclaredMethodOverride(HookImpl.class, Hook.class, "fire", int.class));
+        assertFalse(hasDeclaredMethodOverride(HookImpl.class, Hook.class, "fireLater", int.class));
+        assertTrue(hasMethodOverride(HookImpl.class, Hook.class, "fireLater", int.class));
+        assertTrue(SporranHelper.MethodOverrideCheck.of(Hook.class, "fire", int.class).test(HookImpl.class));
+        assertFalse(SporranHelper.MethodOverrideCheck.ofDeclared(Hook.class, "fire", int.class).test(HookImpl.class));
+
+        // Both kinds for the same class, name and arguments are different cache entries.
+        SporranHelper.OverrideData publicKey = new SporranHelper.OverrideData(Guarded.class, "hook", new Class<?>[] { int.class }, null, false);
+        SporranHelper.OverrideData declaredKey = new SporranHelper.OverrideData(Guarded.class, "hook", new Class<?>[] { int.class }, null, true);
+
+        assertFalse(publicKey.equals(declaredKey));
+        assertNotSame(
+            SporranHelper.MethodOverrideCache.INSTANCE.getOverrideClassValue(publicKey),
+            SporranHelper.MethodOverrideCache.INSTANCE.getOverrideClassValue(declaredKey)
+        );
+        assertSame(
+            SporranHelper.MethodOverrideCache.INSTANCE.getOverrideClassValue(declaredKey),
+            SporranHelper.MethodOverrideCache.INSTANCE.getOverrideClassValue(new SporranHelper.OverrideData(Guarded.class, "hook", new Class<?>[] { int.class }, null, true))
+        );
+    }
+
     @Test
     public void everyCombinationMatchesReflection() {
         List<Check> checks = checksFor(SUPER_CLASSES);
@@ -375,12 +538,12 @@ public class MethodOverrideCheckTest {
             check.viaHelper(Direct.class);
         }
 
-        Method find = SporranHelper.MethodOverrideCache.class.getDeclaredMethod("findOverrideClassValue", Class.class, String.class, Class[].class, Class.class);
+        Method find = SporranHelper.MethodOverrideCache.class.getDeclaredMethod("findOverrideClassValue", Class.class, String.class, Class[].class, Class.class, boolean.class);
         find.setAccessible(true);
         Set<Object> classValues = new HashSet<>();
 
         for (Check check : checks) {
-            Object found = find.invoke(SporranHelper.MethodOverrideCache.INSTANCE, check.superClass, check.methodName, check.methodArgs.clone(), check.returnType);
+            Object found = find.invoke(SporranHelper.MethodOverrideCache.INSTANCE, check.superClass, check.methodName, check.methodArgs.clone(), check.returnType, false);
             Object ofMap = SporranHelper.MethodOverrideCache.INSTANCE.getOverrideClassValue(new SporranHelper.OverrideData(check.superClass, check.methodName, check.methodArgs.clone(), check.returnType));
 
             assertSame(ofMap, found, () -> "the lookup table has another check for " + check);

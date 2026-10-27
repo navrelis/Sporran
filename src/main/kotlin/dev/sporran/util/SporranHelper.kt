@@ -1,5 +1,5 @@
 /*
- * Changed by the Sporran project between 2026-09-29 and 2026-10-26; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -61,7 +61,18 @@ object SporranHelper {
     }
 
     /**
-     * Sporran: the cache behind [hasMethodOverride], [hasMethodOverrideWithReturnType] and [MethodOverrideCheck]. It is an
+     * Sporran: [hasMethodOverride] only sees public methods ([Class.getMethod]), but several methods that NeoForge added
+     * to vanilla classes are `protected` (e.g. `AbstractContainerScreen#renderSlotContents`), so for those it is always
+     * false. This one looks at the declared methods of [topClass] and its superclasses below [superClass] instead, so it
+     * finds protected and package-private overrides as well. Private and static methods don't count; bridge methods do (they only exist where a generic method is overridden).
+     * [superClass] itself never counts, and it is false if [topClass] doesn't extend [superClass].
+     */
+    fun hasDeclaredMethodOverride(topClass: Class<*>, superClass: Class<*>, methodName: String, vararg methodArgs: Class<*>): Boolean {
+        return MethodOverrideCache.hasDeclaredMethodOverride(topClass, superClass, methodName, methodArgs)
+    }
+
+    /**
+     * Sporran: the cache behind [hasMethodOverride], [hasMethodOverrideWithReturnType], [hasDeclaredMethodOverride] and [MethodOverrideCheck]. It is an
      * object of its own that uses nothing of Fabric Loader or Minecraft, so a [MethodOverrideCheck] never initialises
      * [SporranHelper], and so it can be unit tested (SporranHelper itself needs a running Fabric Loader).
      */
@@ -93,8 +104,17 @@ object SporranHelper {
 
         /** [returnType] is null for [SporranHelper.hasMethodOverride]. */
         fun hasMethodOverride(topClass: Class<*>, superClass: Class<*>, methodName: String, methodArgs: Array<out Class<*>>, returnType: Class<*>?): Boolean {
-            val classValue = findOverrideClassValue(superClass, methodName, methodArgs, returnType)
-                ?: registerOverrideClassValue(OverrideData(superClass, methodName, methodArgs, returnType))
+            return hasMethodOverride(topClass, superClass, methodName, methodArgs, returnType, false)
+        }
+
+        /** [SporranHelper.hasDeclaredMethodOverride]: it shares the cache, but a declared check never shares a result with a public one. */
+        fun hasDeclaredMethodOverride(topClass: Class<*>, superClass: Class<*>, methodName: String, methodArgs: Array<out Class<*>>): Boolean {
+            return hasMethodOverride(topClass, superClass, methodName, methodArgs, null, true)
+        }
+
+        private fun hasMethodOverride(topClass: Class<*>, superClass: Class<*>, methodName: String, methodArgs: Array<out Class<*>>, returnType: Class<*>?, declared: Boolean): Boolean {
+            val classValue = findOverrideClassValue(superClass, methodName, methodArgs, returnType, declared)
+                ?: registerOverrideClassValue(OverrideData(superClass, methodName, methodArgs, returnType, declared))
 
             return classValue.get(topClass)
         }
@@ -105,7 +125,7 @@ object SporranHelper {
             return this.cachedClassValues[overrideData] ?: this.cachedClassValues.computeIfAbsent(overrideData, ::createOverrideClassValue)
         }
 
-        private fun overrideLookupIndex(tableSize: Int, superClass: Class<*>, methodName: String, methodArgs: Array<out Class<*>>, returnType: Class<*>?): Int {
+        private fun overrideLookupIndex(tableSize: Int, superClass: Class<*>, methodName: String, methodArgs: Array<out Class<*>>, returnType: Class<*>?, declared: Boolean): Int {
             var hash = superClass.hashCode()
             hash = 31 * hash + methodName.hashCode()
 
@@ -114,19 +134,20 @@ object SporranHelper {
             }
 
             hash = 31 * hash + returnType.hashCode()
+            hash = 31 * hash + declared.hashCode()
 
             return (hash xor (hash ushr 16)) and (tableSize - 1)
         }
 
-        private fun findOverrideClassValue(superClass: Class<*>, methodName: String, methodArgs: Array<out Class<*>>, returnType: Class<*>?): ClassValue<Boolean>? {
+        private fun findOverrideClassValue(superClass: Class<*>, methodName: String, methodArgs: Array<out Class<*>>, returnType: Class<*>?, declared: Boolean): ClassValue<Boolean>? {
             val table = this.overrideLookupTable
-            var entry = table[overrideLookupIndex(table.size, superClass, methodName, methodArgs, returnType)]
+            var entry = table[overrideLookupIndex(table.size, superClass, methodName, methodArgs, returnType, declared)]
 
             while (entry != null) {
                 val overrideData = entry.overrideData
 
                 // The same comparison as OverrideData#equals.
-                if (overrideData.superClass == superClass && overrideData.returnType == returnType
+                if (overrideData.superClass == superClass && overrideData.returnType == returnType && overrideData.declared == declared
                     && overrideData.methodName == methodName && checkAllElementsMatch(overrideData.methodArgs, methodArgs)
                 ) {
                     return entry.classValue
@@ -143,7 +164,7 @@ object SporranHelper {
 
             synchronized(this.overrideLookupLock) {
                 // Another thread may have added the same key in the meantime.
-                if (findOverrideClassValue(overrideData.superClass, overrideData.methodName, overrideData.methodArgs, overrideData.returnType) == null) {
+                if (findOverrideClassValue(overrideData.superClass, overrideData.methodName, overrideData.methodArgs, overrideData.returnType, overrideData.declared) == null) {
                     val oldTable = this.overrideLookupTable
                     val newTable: Array<OverrideLookupEntry?>
 
@@ -172,7 +193,7 @@ object SporranHelper {
         }
 
         private fun addOverrideLookupEntry(table: Array<OverrideLookupEntry?>, overrideData: OverrideData, classValue: ClassValue<Boolean>) {
-            val index = overrideLookupIndex(table.size, overrideData.superClass, overrideData.methodName, overrideData.methodArgs, overrideData.returnType)
+            val index = overrideLookupIndex(table.size, overrideData.superClass, overrideData.methodName, overrideData.methodArgs, overrideData.returnType, overrideData.declared)
             table[index] = OverrideLookupEntry(overrideData, classValue, table[index])
         }
 
@@ -183,6 +204,45 @@ object SporranHelper {
             val methodName = overrideData.methodName
             val methodArgs = overrideData.methodArgs
             val returnType = overrideData.returnType
+
+            if (overrideData.declared) {
+                return object : ClassValue<Boolean>() {
+                    override fun computeValue(type: Class<*>): Boolean {
+                        try {
+                            if (!superClass.isAssignableFrom(type)) {
+                                return false
+                            }
+
+                            // Walk up to, but not including, superClass: a declaration in superClass itself is the
+                            // method that is being overridden, not an override.
+                            var current: Class<*>? = type
+
+                            while (current != null && current != superClass) {
+                                try {
+                                    val method = current.getDeclaredMethod(methodName, *methodArgs)
+                                    val modifiers = method.modifiers
+
+                                    // A private or static method of that name overrides nothing and is never called by
+                                    // the superclass. A bridge method does count: below superClass, one with exactly the erased
+                                    // signature of the superClass method is only generated when that class overrides it
+                                    // (generic narrowing, e.g. a subclass with concrete type arguments).
+                                    if (!Modifier.isPrivate(modifiers) && !Modifier.isStatic(modifiers)) {
+                                        return true
+                                    }
+                                } catch (_: NoSuchMethodException) {
+                                    // not declared in this class, try the next superclass
+                                }
+
+                                current = current.superclass
+                            }
+
+                            return false
+                        } catch (_: Throwable) {
+                            return false
+                        }
+                    }
+                }
+            }
 
             if (returnType == null) {
                 return object : ClassValue<Boolean>() {
@@ -253,6 +313,12 @@ object SporranHelper {
             @JvmStatic
             fun of(superClass: Class<*>, methodName: String, vararg methodArgs: Class<*>): MethodOverrideCheck {
                 return MethodOverrideCheck(OverrideData(superClass, methodName, methodArgs))
+            }
+
+            /** Same as [hasDeclaredMethodOverride]: for methods that are not public (NeoForge added several protected ones). */
+            @JvmStatic
+            fun ofDeclared(superClass: Class<*>, methodName: String, vararg methodArgs: Class<*>): MethodOverrideCheck {
+                return MethodOverrideCheck(OverrideData(superClass, methodName, methodArgs, null, true))
             }
 
             /** Same as [hasMethodOverrideWithReturnType]. */
@@ -367,11 +433,14 @@ object SporranHelper {
     }
 
     @JvmRecord
-    internal data class OverrideData(
+    internal data class OverrideData @JvmOverloads constructor(
         val superClass: Class<*>,
         val methodName: String,
         val methodArgs: Array<out Class<*>>,
-        val returnType: Class<*>? = null
+        val returnType: Class<*>? = null,
+        // Sporran: a check of the declared methods (hasDeclaredMethodOverride) and a check of the public ones (hasMethodOverride)
+        //  of the same method are different questions, so they must not share a cache entry.
+        val declared: Boolean = false
     ) {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
@@ -385,6 +454,7 @@ object SporranHelper {
             // Sporran: include the return type, otherwise a plain check and a return type check of the same method shared
             //  one cache entry, and whichever was created first decided the result of both.
             if (returnType != other.returnType) return false
+            if (declared != other.declared) return false
 
             return true
         }
@@ -394,6 +464,7 @@ object SporranHelper {
             result = 31 * result + methodName.hashCode()
             result = 31 * result + methodArgs.contentHashCode()
             result = 31 * result + returnType.hashCode()
+            result = 31 * result + declared.hashCode()
             return result
         }
     }

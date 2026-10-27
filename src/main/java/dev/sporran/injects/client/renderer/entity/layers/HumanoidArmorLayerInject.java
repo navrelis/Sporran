@@ -1,5 +1,5 @@
 /*
- * Changed by the Sporran project between 2026-09-29 and 2026-10-04; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -63,7 +63,8 @@ public abstract class HumanoidArmorLayerInject<T extends LivingEntity, M extends
     @Unique private final AtomicBoolean sporran$isRunningCompatibility = new AtomicBoolean(false);
 
     // Sporran: these run for every armor piece of every entity in every frame, resolve the override checks only once.
-    @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_ARMOR_MODEL_HOOK_OVERRIDE = SporranHelper.MethodOverrideCheck.of(HumanoidArmorLayer.class, "getArmorModelHook", LivingEntity.class, ItemStack.class, EquipmentSlot.class, HumanoidModel.class);
+    //  getArmorModelHook is protected, so ofDeclared: Class.getMethod (what "of" uses) only finds public methods and would never see an override.
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_ARMOR_MODEL_HOOK_OVERRIDE = SporranHelper.MethodOverrideCheck.ofDeclared(HumanoidArmorLayer.class, "getArmorModelHook", LivingEntity.class, ItemStack.class, EquipmentSlot.class, HumanoidModel.class);
     @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_ARMOR_TEXTURE_OVERRIDE = SporranHelper.MethodOverrideCheck.withReturnType(IItemExtension.class, "getArmorTexture", ResourceLocation.class, ItemStack.class, Entity.class, EquipmentSlot.class, ArmorMaterial.Layer.class, boolean.class);
 
     @Inject(method = "render(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/world/entity/LivingEntity;FFFFFF)V", at = @At("HEAD"))

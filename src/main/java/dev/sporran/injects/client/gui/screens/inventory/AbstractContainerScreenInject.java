@@ -1,6 +1,6 @@
 // TRACKED HASH: c7da1c1b82a8d0a88d3f2a674ea41109be948d6c
 /*
- * Changed by the Sporran project between 2026-09-29 and 2026-10-04; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -61,8 +61,9 @@ public abstract class AbstractContainerScreenInject extends Screen implements Ab
     // Sporran: Moved ContainerScreenEvent.Render.Background to ScreenInject
 
     // Sporran: these run for the slots of an open container screen in every frame, resolve the override checks only once.
-    @Unique private static final SporranHelper.MethodOverrideCheck sporran$RENDER_SLOT_HIGHLIGHT_OVERRIDE = SporranHelper.MethodOverrideCheck.of(AbstractContainerScreen.class, "renderSlotHighlight", GuiGraphics.class, Slot.class, int.class, int.class, float.class);
-    @Unique private static final SporranHelper.MethodOverrideCheck sporran$RENDER_SLOT_CONTENTS_OVERRIDE = SporranHelper.MethodOverrideCheck.of(AbstractContainerScreen.class, "renderSlotContents", GuiGraphics.class, ItemStack.class, Slot.class, String.class);
+    //  Both methods are protected, so ofDeclared: Class.getMethod (what "of" uses) only finds public methods and would never see an override.
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$RENDER_SLOT_HIGHLIGHT_OVERRIDE = SporranHelper.MethodOverrideCheck.ofDeclared(AbstractContainerScreen.class, "renderSlotHighlight", GuiGraphics.class, Slot.class, int.class, int.class, float.class);
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$RENDER_SLOT_CONTENTS_OVERRIDE = SporranHelper.MethodOverrideCheck.ofDeclared(AbstractContainerScreen.class, "renderSlotContents", GuiGraphics.class, ItemStack.class, Slot.class, String.class);
 
     @WrapOperation(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/inventory/Slot;isHighlightable()Z"))
     private boolean sporran$checkShouldUseRenderHighlightOverride(Slot instance, Operation<Boolean> original, @Local(argsOnly = true) GuiGraphics guiGraphics, @Local(argsOnly = true, ordinal = 0) int mouseX, @Local(argsOnly = true, ordinal = 1) int mouseY, @Local(argsOnly = true) float partialTick) {
