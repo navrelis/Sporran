@@ -11,7 +11,7 @@ comes directly after it. The script `tools/licence/add-change-notices.py` (Pytho
 finds the modified files with git and refreshes these notices; `--check` only reports files whose notice is missing or
 out of date.
 
-## Unreleased
+## Sporran 1.0.2 (2026-10-27)
 
 More hooks that replaced vanilla code although no NeoForge mod needed them (continuation of 1.0.1):
 
