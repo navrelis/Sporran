@@ -1,6 +1,6 @@
 // TRACKED HASH: 297d980725ef2ec87d9bfaf04e6eab59c792fccd
 /*
- * Changed by the Sporran project between 2026-09-29 and 2026-10-04; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -187,8 +187,11 @@ public abstract class IngredientInject implements IngredientInjection {
         return this.customIngredient;
     }
 
+    // Sporran: this becomes Ingredient#getCustomIngredient. It returns the field, like NeoForge's own method. It used to return neoforge$getCustomIngredient(), which
+    //  calls getCustomIngredient() again when a subclass overrides it, so an override that calls super.getCustomIngredient() recursed forever. neoforge$getCustomIngredient()
+    //  is what dispatches to a real override; nothing in Sporran calls this method itself (a call on a subclass reaches its override directly).
     public ICustomIngredient sporran$i$getCustomIngredient() {
-        return this.neoforge$getCustomIngredient();
+        return this.customIngredient;
     }
 
     @Override

@@ -21,8 +21,8 @@ More hooks that replaced vanilla code although no NeoForge mod needed them (cont
   extension interface (or, where a Sporran mixin adds the method to a vanilla class, against that class). Among them:
   sound types, block friction, fire spread, light emission, explosion resistance, neighbour changes, path finding,
   item damage and stack size, food, shield disabling, bundle contents, lightmap colours. Places where NeoForge's
-  default does more than vanilla (supportsEnchantment for enchanted books, canHarvestBlock with its event,
-  canBoatInFluid, attribute tooltips, getToolModifiedState with item abilities) were left as they are.
+  default does more than vanilla (supportsEnchantment for enchanted books, canBoatInFluid, attribute tooltips,
+  getToolModifiedState with item abilities) were left as they are.
 - Checks that could never be true because of a wrong parameter list now find real overrides: `onBlockExploded`,
   `onDestroyedByPlayer` (server and client), `IItemExtension.onDestroyed`, `getLightEmission`, `useAmbientOcclusion`,
   and `getToolModifiedState` for fire charges and flint and steel. Cats and wolves checked `getFoodProperties` on the
@@ -41,9 +41,25 @@ More hooks that replaced vanilla code although no NeoForge mod needed them (cont
   Nested `useOn` calls get their own snapshots and events, and capturing is switched back when `Item.useOn` throws.
   `onPlaceItemIntoWorld` itself is unchanged for NeoForge mods that call it (its second half is shared). Also: a
   cancelled `ITEM_BEFORE_BLOCK` event no longer leaves `onItemUseFirst`'s callback set on the stack.
+- `ServerPlayerGameMode.destroyBlock` always makes vanilla's `hasCorrectToolForDrops` call again. The override check
+  for `canHarvestBlock` asked against `Block`, but it is a default of `IBlockExtension`, so the call was replaced by
+  `state.canHarvestBlock(...)` for every block and other mods' mixins on that call never ran. A block that really
+  overrides `canHarvestBlock` still decides. For every other block NeoForge's default did exactly one thing, post
+  `PlayerEvent.HarvestCheck` with the vanilla answer, and that is now done on the result of the vanilla call (the event
+  still fires once per break, with the same input and effect).
+- Container data values (`ServerPlayer`'s container synchronizer, `broadcastDataValue`): the vanilla method body runs
+  again and only its one `send` is replaced by the `AdvancedContainerSetDataPayload` for clients that have the channel
+  (it used to cancel the method at its head, so other mods' injections into it never ran for Sporran clients).
+- `Ingredient.neoforge$getCustomIngredient`: the override check was right (`getCustomIngredient` is merged into
+  `Ingredient` itself, a soft implementation of `IngredientInjection`, so it is false for every plain ingredient and only
+  a subclass that overrides it is asked). But the merged `getCustomIngredient` called `neoforge$getCustomIngredient`,
+  so a subclass override that calls `super.getCustomIngredient()` recursed until a stack overflow. It now returns the
+  field, like NeoForge's method.
 
 The server self-test phase `vanillaHooks` also checks hoppers, `isAir`, `isEyeInFluid`, the vibration frequency and
-block placement through `ItemStack.useOn` (vanilla body, `EntityPlaceEvent` accept/cancel, nested use, exception).
+block placement through `ItemStack.useOn` (vanilla body, `EntityPlaceEvent` accept/cancel, nested use, exception),
+`ServerPlayerGameMode.destroyBlock` (a probe on the `hasCorrectToolForDrops` call, one `HarvestCheck` per break, the
+listener's answer decides the drops) and `neoforge$getCustomIngredient` of vanilla and custom ingredients.
 
 ## Sporran 1.0.1 (2026-10-27)
 

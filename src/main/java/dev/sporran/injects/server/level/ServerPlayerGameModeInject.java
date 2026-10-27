@@ -43,7 +43,6 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.BlockHitResult;
@@ -83,13 +82,23 @@ public abstract class ServerPlayerGameModeInject {
 		return original.call(instance, blockPos, b);
 	}
 
+	// Sporran: NeoForge's patch calls state.canHarvestBlock(level, pos, player) here instead of player.hasCorrectToolForDrops(state). Its default (IBlockExtension#canHarvestBlock)
+	//  is EventHooks.doPlayerHarvestCheck: the vanilla hasCorrectToolForDrops(state) result, passed through PlayerEvent.HarvestCheck. The vanilla call always runs now (it used to be
+	//  replaced for every block, since this was asked against Block.class and canHarvestBlock is a default of IBlockExtension, so "overridden" was always true), so other
+	//  mods' wrappers of it work. A block that really overrides canHarvestBlock still decides; for every other block the default's work is done on the result of the call: the
+	//  HarvestCheck event is posted once with it, which is exactly what the default did (Player#hasCorrectToolForDrops(state) itself posts nothing in Sporran).
+	@Unique
+	private static final SporranHelper.MethodOverrideCheck sporran$CAN_HARVEST_BLOCK_OVERRIDE = SporranHelper.MethodOverrideCheck.of(IBlockExtension.class, "canHarvestBlock", BlockState.class, BlockGetter.class, BlockPos.class, Player.class);
+
 	@WrapOperation(method = "destroyBlock", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerPlayer;hasCorrectToolForDrops(Lnet/minecraft/world/level/block/state/BlockState;)Z"))
 	private boolean sporran$checkCanHarvestBlock(ServerPlayer instance, BlockState state, Operation<Boolean> original, @Local(argsOnly = true) BlockPos pos) {
-		if (SporranHelper.INSTANCE.hasMethodOverride(state.getBlock().getClass(), Block.class, "canHarvestBlock", BlockState.class, BlockGetter.class, BlockPos.class, Player.class)) {
+		boolean vanillaValue = original.call(instance, state);
+
+		if (sporran$CAN_HARVEST_BLOCK_OVERRIDE.test(state.getBlock().getClass())) {
 			return state.canHarvestBlock(this.level, pos, instance);
 		}
 
-		return original.call(instance, state);
+		return EventHooks.sporran$doPlayerHarvestCheck(instance, state, this.level, pos, vanillaValue);
 	}
 
 	@Inject(method = "destroyBlock", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerPlayer;hasCorrectToolForDrops(Lnet/minecraft/world/level/block/state/BlockState;)Z"))

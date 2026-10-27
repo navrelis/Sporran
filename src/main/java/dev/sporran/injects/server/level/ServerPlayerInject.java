@@ -1,6 +1,6 @@
 // TRACKED HASH: 8ce7cfcc1608a79d687631411c28c60d1064aad3
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -84,18 +84,17 @@ public abstract class ServerPlayerInject extends Player implements ServerPlayerI
     // values were always truncated to a short by the vanilla ClientboundContainerSetDataPacket.
     @Mixin(targets = "net.minecraft.server.level.ServerPlayer$1")
     public abstract static class AnonymousContainerSynchronizer1Inject {
-        // Sporran: synthetic "this$0", which is field_29182 in intermediary and has no Mojang name
-        @Shadow
-        @Final
-        private ServerPlayer field_29182;
-
-        // Sporran: private method_34227, used by both sendInitialData and sendDataChange
-        @Inject(method = "broadcastDataValue", at = @At("HEAD"), cancellable = true)
-        private void sporran$tryUseAdvancedContainerSetDataPayload(AbstractContainerMenu container, int id, int value, CallbackInfo ci) {
-            // Sporran TODO: does this override anything of Fabric?
-            if (field_29182.connection.hasChannel(AdvancedContainerSetDataPayload.TYPE)) {
-                field_29182.connection.send(new AdvancedContainerSetDataPayload((byte) container.containerId, (short) id, value));
-                ci.cancel();
+        // Sporran: private method_34227, used by both sendInitialData and sendDataChange. Its body is a single
+        //  "this$0.connection.send(new ClientboundContainerSetDataPacket(container.containerId, id, value))", so this wraps that one
+        //  send (there is no other send call to pick an ordinal for). It used to be a HEAD inject that cancelled the method for every client with the
+        //  channel, so other mods' injections into broadcastDataValue never ran for Sporran clients; now the vanilla body always runs and only
+        //  the packet it sends is replaced, with the same condition and payload as before.
+        @WrapOperation(method = "broadcastDataValue", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/network/ServerGamePacketListenerImpl;send(Lnet/minecraft/network/protocol/Packet;)V"))
+        private void sporran$tryUseAdvancedContainerSetDataPayload(ServerGamePacketListenerImpl instance, Packet<?> packet, Operation<Void> original, @Local(argsOnly = true) AbstractContainerMenu container, @Local(argsOnly = true, ordinal = 0) int id, @Local(argsOnly = true, ordinal = 1) int value) {
+            if (instance.hasChannel(AdvancedContainerSetDataPayload.TYPE)) {
+                instance.send(new AdvancedContainerSetDataPayload((byte) container.containerId, (short) id, value));
+            } else {
+                original.call(instance, packet);
             }
         }
     }
