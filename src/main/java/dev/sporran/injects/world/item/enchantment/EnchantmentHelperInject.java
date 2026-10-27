@@ -1,5 +1,5 @@
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -7,6 +7,7 @@ package dev.sporran.injects.world.item.enchantment;
 
 import com.llamalad7.mixinextras.expression.Definition;
 import com.llamalad7.mixinextras.expression.Expression;
+import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -20,8 +21,10 @@ import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.neoforged.neoforge.common.CommonHooks;
+import net.neoforged.neoforge.common.extensions.IItemExtension;
 import net.neoforged.neoforge.event.EventHooks;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
@@ -32,11 +35,33 @@ import dev.sporran.util.SporranHelper;
 
 @Mixin(EnchantmentHelper.class)
 public abstract class EnchantmentHelperInject implements EnchantmentHelperInjection {
+    // Sporran: these checks asked against Item.class, but the methods are defaults of IItemExtension (which Item gets
+    //  through interface injection), so they were true for every item and the hooks below replaced vanilla code (and
+    //  every other mod's mixin into it) even for plain vanilla items. Asked against IItemExtension, they are only true
+    //  for an item class that really overrides the method.
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_ENCHANTMENT_LEVEL_OVERRIDE = SporranHelper.MethodOverrideCheck.of(IItemExtension.class, "getEnchantmentLevel", ItemStack.class, Holder.class);
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_ALL_ENCHANTMENTS_OVERRIDE = SporranHelper.MethodOverrideCheck.of(IItemExtension.class, "getAllEnchantments", ItemStack.class, HolderLookup.RegistryLookup.class);
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_ENCHANTMENT_VALUE_OVERRIDE = SporranHelper.MethodOverrideCheck.of(IItemExtension.class, "getEnchantmentValue", ItemStack.class);
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$IS_PRIMARY_ITEM_FOR_OVERRIDE = SporranHelper.MethodOverrideCheck.of(IItemExtension.class, "isPrimaryItemFor", ItemStack.class, Holder.class);
+    @Unique private static final SporranHelper.MethodOverrideCheck sporran$SUPPORTS_ENCHANTMENT_OVERRIDE = SporranHelper.MethodOverrideCheck.of(IItemExtension.class, "supportsEnchantment", ItemStack.class, Holder.class);
+
     @Inject(method = "getItemEnchantmentLevel", at = @At("HEAD"), cancellable = true)
     private static void sporran$tryHandleDirectEnchantmentLevel(Holder<Enchantment> enchantment, ItemStack stack, CallbackInfoReturnable<Integer> cir) {
-        if (!EnchantmentHelperInjection.sporran$shouldUseTagEnchantment.get() && SporranHelper.INSTANCE.hasMethodOverride(stack.getItem().getClass(), Item.class, "getEnchantmentLevel", ItemStack.class, Holder.class)) {
+        if (!EnchantmentHelperInjection.sporran$shouldUseTagEnchantment.get() && sporran$GET_ENCHANTMENT_LEVEL_OVERRIDE.test(stack.getItem().getClass())) {
             cir.setReturnValue(stack.getEnchantmentLevel(enchantment));
         }
+    }
+
+    // Sporran: for an item that does not override getEnchantmentLevel the vanilla body runs (it reads the same
+    //  enchantments component as the IItemExtension default); NeoForge's GetEnchantmentLevelEvent still gets to change
+    //  its result, as IItemStackExtension#getEnchantmentLevel would.
+    @ModifyReturnValue(method = "getItemEnchantmentLevel", at = @At("RETURN"))
+    private static int sporran$postEnchantmentLevelEvent(int original, Holder<Enchantment> enchantment, ItemStack stack) {
+        if (EnchantmentHelperInjection.sporran$shouldUseTagEnchantment.get() || sporran$GET_ENCHANTMENT_LEVEL_OVERRIDE.test(stack.getItem().getClass())) {
+            return original;
+        }
+
+        return EventHooks.getEnchantmentLevelSpecific(original, stack, enchantment);
     }
 
     @CreateStatic
@@ -51,7 +76,7 @@ public abstract class EnchantmentHelperInject implements EnchantmentHelperInject
     private static ItemEnchantments sporran$tryGetAllEnchantmentsFromLookup(ItemEnchantments value, @Local(argsOnly = true) ItemStack stack) {
         var lookup = CommonHooks.resolveLookup(Registries.ENCHANTMENT);
         if (lookup != null) {
-            if (SporranHelper.INSTANCE.hasMethodOverride(stack.getItem().getClass(), Item.class, "getAllEnchantments", ItemStack.class, HolderLookup.RegistryLookup.class)) {
+            if (sporran$GET_ALL_ENCHANTMENTS_OVERRIDE.test(stack.getItem().getClass())) {
                 return stack.getAllEnchantments(lookup);
             } else {
                 return EventHooks.getAllEnchantmentLevels(value, stack, lookup); // Sporran: Make sure to still call the event.
@@ -67,7 +92,7 @@ public abstract class EnchantmentHelperInject implements EnchantmentHelperInject
     private static ItemEnchantments sporran$tryGetAllEnchantments(ItemEnchantments value, @Local(argsOnly = true) ItemStack stack, @Local(argsOnly = true) LivingEntity entity) {
         var lookup = entity.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
 
-        if (SporranHelper.INSTANCE.hasMethodOverride(stack.getItem().getClass(), Item.class, "getAllEnchantments", ItemStack.class, HolderLookup.RegistryLookup.class)) {
+        if (sporran$GET_ALL_ENCHANTMENTS_OVERRIDE.test(stack.getItem().getClass())) {
             return stack.getAllEnchantments(lookup);
         } else {
             return EventHooks.getAllEnchantmentLevels(value, stack, lookup); // Sporran: Make sure to still call the event.
@@ -76,7 +101,7 @@ public abstract class EnchantmentHelperInject implements EnchantmentHelperInject
 
     @WrapOperation(method = {"getEnchantmentCost", "selectEnchantment"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/world/item/Item;getEnchantmentValue()I"))
     private static int sporran$tryGetEnchantmentValueFromStack(Item instance, Operation<Integer> original, @Local(argsOnly = true) ItemStack stack) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(stack.getItem().getClass(), Item.class, "getEnchantmentValue", ItemStack.class)) {
+        if (sporran$GET_ENCHANTMENT_VALUE_OVERRIDE.test(stack.getItem().getClass())) {
             return stack.getEnchantmentValue();
         }
 
@@ -85,7 +110,10 @@ public abstract class EnchantmentHelperInject implements EnchantmentHelperInject
 
     @Inject(method = "method_60143", at = @At("HEAD"), cancellable = true)
     private static void sporran$tryCheckIsPrimaryItem(ItemStack itemStack, boolean bl, Holder<Enchantment> holder, CallbackInfoReturnable<Boolean> cir) {
-        if (SporranHelper.INSTANCE.hasMethodOverride(itemStack.getItem().getClass(), Item.class, "isPrimaryItemFor", ItemStack.class, Holder.class)) {
+        // Sporran: the IItemExtension default of isPrimaryItemFor builds on supportsEnchantment, so an item that only
+        //  overrides that one still takes the NeoForge path. Every other item keeps vanilla's filter (Enchantment#isPrimaryItem).
+        Class<?> itemClass = itemStack.getItem().getClass();
+        if (sporran$IS_PRIMARY_ITEM_FOR_OVERRIDE.test(itemClass) || sporran$SUPPORTS_ENCHANTMENT_OVERRIDE.test(itemClass)) {
             cir.setReturnValue(itemStack.isPrimaryItemFor(holder));
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -25,7 +25,9 @@ public abstract class CauldronBlockInject extends Block {
 
     @Inject(method = "receiveStalactiteDrip", at = @At("HEAD"), cancellable = true)
     private void sporran$checkHandleCauldronDrip(BlockState state, Level level, BlockPos pos, Fluid fluid, CallbackInfo ci) {
-        if (fluid.neo$getFluidType().handleCauldronDrip(fluid, level, pos))
+        // Sporran: NeoForge's water and lava types handle the drip too, with the same result as vanilla; leave vanilla's
+        //  fluids to vanilla's code.
+        if (!fluid.neo$getFluidType().isVanilla() && fluid.neo$getFluidType().handleCauldronDrip(fluid, level, pos))
             ci.cancel();
     }
 }

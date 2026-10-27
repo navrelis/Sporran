@@ -11,6 +11,35 @@ comes directly after it. The script `tools/licence/add-change-notices.py` (Pytho
 finds the modified files with git and refreshes these notices; `--check` only reports files whose notice is missing or
 out of date.
 
+## Sporran 1.0.1 (2026-10-27)
+
+Three hooks replaced vanilla code for every item, also for plain vanilla items that no NeoForge mod overrides or
+listens to. Fabric mods that hook the same vanilla methods with their own mixins then never ran. Found with the
+GameTests of Enchanter's Toolkit in a large modpack. Each hook now takes over only when a NeoForge mod needs it:
+
+- `EnchantmentHelper.getItemEnchantmentLevel`: the check "does this item override `getEnchantmentLevel`" asked
+  against `Item`, but the method is a default of `IItemExtension`, so the answer was yes for every item and the vanilla
+  method body was skipped. It now asks against `IItemExtension`, like the other override checks. NeoForge's
+  `GetEnchantmentLevelEvent` is still applied to the vanilla result. The same wrong check was fixed in the other
+  enchantment hooks of `EnchantmentHelper` (all enchantments of a stack, enchantment value, primary item filter).
+- Enchanting table pool (`EnchantmentHelper.getAvailableEnchantmentResults`): vanilla's `Enchantment.isPrimaryItem`
+  decides again unless the item overrides `isPrimaryItemFor` or `supportsEnchantment`. The default of
+  `IItemExtension.isPrimaryItemFor` now calls `Enchantment.isPrimaryItem` instead of a copy of its rule, so mixins into
+  it apply wherever NeoForge code asks `ItemStack.isPrimaryItemFor`.
+- Grindstone (`GrindstoneMenu` result slot, `onTake`): `CommonHooks.onGrindstoneTake` always took over, so taking the
+  result always emptied both inputs NeoForge's way and vanilla's code never ran (a Fabric mod that grinds one book off
+  a stack lost the whole stack). Sporran now posts `GrindstoneEvent.OnTakeItem` itself and replaces vanilla's code only
+  when a listener cancelled the event or changed the XP or an input; otherwise vanilla runs, with the XP amount the
+  listeners saw. The event now gets the player (it was passed as `null`).
+
+The same kind of takeover was fixed in four more hooks, whose NeoForge replacement gave the vanilla result anyway:
+`BlockStateBase.isAir` (the override check looked for `isAir` on `IBlockExtension`, which does not declare it),
+`ShulkerBoxSlot.mayPlace` (same `Item` vs. `IItemExtension` check), `CauldronBlock.receiveStalactiteDrip` (vanilla
+water and lava are left to vanilla) and, on the client, `KeyMapping.same` (key mappings without key modifiers).
+
+A new phase of the server self-test (`vanillaHooks`) hooks these three vanilla methods the way another Fabric mod would
+and checks that the hooks run and that the NeoForge events still work.
+
 ## Sporran 1.0.0 (2026-10-26)
 
 This is the first release of the relaunched Sporran project. It lists everything Sporran changes compared with

@@ -1,5 +1,5 @@
 /*
- * Changed by the Sporran project between 2026-09-29 and 2026-10-04; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -148,8 +148,10 @@ public abstract class BlockBehaviourInject implements BlockBehaviourInjection {
             return this.isAir;
         }
 
-        // Sporran: isAir is one of the hottest calls in the game, resolve the override check only once.
-        @Unique private static final SporranHelper.MethodOverrideCheck sporran$IS_AIR_OVERRIDE = SporranHelper.MethodOverrideCheck.of(IBlockExtension.class, "isAir", BlockState.class);
+        // Sporran: isAir is one of the hottest calls in the game, resolve the override check only once. Block#isAir(BlockState)
+        //  is not in IBlockExtension: this mixin adds it to BlockBehaviour, so ask against BlockBehaviour (against
+        //  IBlockExtension the check was true for every block and vanilla's isAir never ran).
+        @Unique private static final SporranHelper.MethodOverrideCheck sporran$IS_AIR_OVERRIDE = SporranHelper.MethodOverrideCheck.of(BlockBehaviour.class, "isAir", BlockState.class);
 
         @Inject(method = "isAir", at = @At("HEAD"), cancellable = true)
         private void sporran$checkIsAirViaBlock(CallbackInfoReturnable<Boolean> cir) {

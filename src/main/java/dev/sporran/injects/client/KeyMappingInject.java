@@ -1,6 +1,6 @@
 // TRACKED HASH: 66608c9c6edf5ebf79f290052253701c1e738d8e
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -98,6 +98,10 @@ public abstract class KeyMappingInject implements IKeyMappingExtension {
 
     @Inject(method = "same", at = @At("HEAD"), cancellable = true)
     private void sporran$addKeyConflictContextToSimilarityCheck(KeyMapping binding, CallbackInfoReturnable<Boolean> cir) {
+        // Sporran: without key modifiers the answer below is vanilla's (the keys are equal), so leave it to vanilla.
+        if (getKeyModifier() == KeyModifier.NONE && binding.getKeyModifier() == KeyModifier.NONE)
+            return;
+
         if (getKeyConflictContext().conflicts(binding.getKeyConflictContext()) || binding.getKeyConflictContext().conflicts(getKeyConflictContext())) {
             KeyModifier keyModifier = getKeyModifier();
             KeyModifier otherKeyModifier = binding.getKeyModifier();

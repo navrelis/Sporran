@@ -4,7 +4,7 @@
  */
 
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on NeoForge by NeoForged, as ported by KiltMC (see VENDORED.md). Licensed under the GNU LGPL 2.1.
  */
 
@@ -487,6 +487,12 @@ public interface IItemExtension extends ItemInjection, io.github.fabricators_of_
     default boolean isPrimaryItemFor(ItemStack stack, Holder<Enchantment> enchantment) {
         if (stack.getItem() == Items.BOOK) {
             return true;
+        }
+        // Sporran: without an override of supportsEnchantment (whose default is vanilla's isSupportedItem, apart from
+        //  enchanted books) the rule below is vanilla's Enchantment#isPrimaryItem, so ask that method itself. A copy of
+        //  it skipped every Fabric mod's mixin into isPrimaryItem / isSupportedItem.
+        if (!stack.is(Items.ENCHANTED_BOOK) && !SporranHelper.INSTANCE.hasMethodOverride(self().getClass(), IItemExtension.class, "supportsEnchantment", ItemStack.class, Holder.class)) {
+            return enchantment.value().isPrimaryItem(stack);
         }
         Optional<HolderSet<Item>> primaryItems = enchantment.value().definition().primaryItems();
         return this.supportsEnchantment(stack, enchantment) && (primaryItems.isEmpty() || stack.is(primaryItems.get()));
