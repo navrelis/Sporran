@@ -33,8 +33,17 @@ More hooks that replaced vanilla code although no NeoForge mod needed them (cont
 - `Entity.isEyeInFluid`, `Biome.getMobSettings`/`getGenerationSettings` and `VibrationSystem.getGameEventFrequency`
   run their vanilla bodies; NeoForge's answer (fluid types, biome modifiers, the vibration frequency data map) is
   applied to the result instead of replacing the method.
+- `ItemStack.useOn` on the server: NeoForge returns `CommonHooks.onPlaceItemIntoWorld` there, so the vanilla body
+  (and every other mod's mixin into it or into its `Item.useOn` call) never ran. The vanilla body runs again; the
+  placement handling of `onPlaceItemIntoWorld` (block snapshots, `PlayerDestroyItemEvent`, the (multi) place event with
+  the stack at its pre-use count, restoring the blocks and the count on cancel) is done around its `Item.useOn` call.
+  The `ITEM_USED` stat is awarded by the vanilla body (for `SUCCESS`/`CONSUME`, not for a cancelled placement).
+  Nested `useOn` calls get their own snapshots and events, and capturing is switched back when `Item.useOn` throws.
+  `onPlaceItemIntoWorld` itself is unchanged for NeoForge mods that call it (its second half is shared). Also: a
+  cancelled `ITEM_BEFORE_BLOCK` event no longer leaves `onItemUseFirst`'s callback set on the stack.
 
-The server self-test phase `vanillaHooks` also checks hoppers, `isAir`, `isEyeInFluid` and the vibration frequency.
+The server self-test phase `vanillaHooks` also checks hoppers, `isAir`, `isEyeInFluid`, the vibration frequency and
+block placement through `ItemStack.useOn` (vanilla body, `EntityPlaceEvent` accept/cancel, nested use, exception).
 
 ## Sporran 1.0.1 (2026-10-27)
 

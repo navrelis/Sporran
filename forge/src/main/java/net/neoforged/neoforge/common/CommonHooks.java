@@ -4,7 +4,7 @@
  */
 
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on NeoForge by NeoForged, as ported by KiltMC (see VENDORED.md). Licensed under the GNU LGPL 2.1.
  */
 
@@ -658,53 +658,82 @@ public class CommonHooks {
         level.sporran$setCapturingBlockSnapshots(false);
 
         if (ret.consumesAction()) {
-            // save new item data
-            int newSize = itemstack.getCount();
-            DataComponentMap newComponents = itemstack.getComponents();
             @SuppressWarnings("unchecked")
             List<BlockSnapshot> blockSnapshots = (List<BlockSnapshot>) level.sporran$getCapturedBlockSnapshots().clone();
             level.sporran$getCapturedBlockSnapshots().clear();
 
-            // make sure to set pre-placement item data for event
-            itemstack.setCount(size);
-            itemstack.applyComponents(components);
-            //TODO: Set pre-placement item attachments?
+            // Sporran: the rest moved to sporran$firePlaceEvents, which ItemStack#useOn (ItemStackInject) shares; unchanged here.
+            ret = sporran$firePlaceEvents(context, itemstack, item, size, components, blockSnapshots, ret, true);
+        }
+        level.sporran$getCapturedBlockSnapshots().clear();
 
-            Direction side = context.getClickedFace();
+        return ret;
+    }
 
-            boolean eventResult = false;
+    /**
+     * Sporran: the second half of {@link #onPlaceItemIntoWorld}, for an {@code Item#useOn} result that consumes the action,
+     * with the block snapshots captured during that call (already taken off the level). Fires the (multi) place event with
+     * the stack at its pre-use count; on cancel the blocks are restored and the result is FAIL, otherwise the stack gets its
+     * new content back and the placed blocks are updated. {@code ItemStack#useOn} on the server uses it around the
+     * {@code Item#useOn} call of its vanilla body, which awards the stat itself ({@code awardStat} false).
+     */
+    public static InteractionResult sporran$firePlaceEvents(UseOnContext context, ItemStack itemstack, Item item, int size, DataComponentMap components,
+                                                          List<BlockSnapshot> blockSnapshots, InteractionResult ret, boolean awardStat) {
+        Level level = context.getLevel();
+        Player player = context.getPlayer();
+
+        // save new item data
+        int newSize = itemstack.getCount();
+        DataComponentMap newComponents = itemstack.getComponents();
+
+        // make sure to set pre-placement item data for event
+        itemstack.setCount(size);
+        itemstack.applyComponents(components);
+        //TODO: Set pre-placement item attachments?
+
+        Direction side = context.getClickedFace();
+
+        boolean eventResult = false;
+        try {
             if (blockSnapshots.size() > 1) {
                 eventResult = EventHooks.onMultiBlockPlace(player, blockSnapshots, side);
             } else if (blockSnapshots.size() == 1) {
                 eventResult = EventHooks.onBlockPlace(player, blockSnapshots.get(0), side);
             }
+        } catch (Throwable t) {
+            // Sporran: a throwing listener must not leave the pre-use count on the stack while the blocks stay placed (dupe).
+            itemstack.setCount(newSize);
+            itemstack.applyComponents(newComponents);
+            throw t;
+        }
 
-            if (eventResult) {
-                ret = InteractionResult.FAIL; // cancel placement
-                // revert back all captured blocks
-                for (BlockSnapshot blocksnapshot : Lists.reverse(blockSnapshots)) {
-                    level.sporran$setRestoringBlockSnapshots(true);
+        if (eventResult) {
+            ret = InteractionResult.FAIL; // cancel placement
+            // revert back all captured blocks
+            for (BlockSnapshot blocksnapshot : Lists.reverse(blockSnapshots)) {
+                level.sporran$setRestoringBlockSnapshots(true);
+                try { // Sporran: never leave the level restoring (it suppresses block drops) if a restore throws
                     blocksnapshot.restore(blocksnapshot.getFlags() | Block.UPDATE_CLIENTS);
+                } finally {
                     level.sporran$setRestoringBlockSnapshots(false);
                 }
-            } else {
-                // Change the stack to its new content
-                itemstack.setCount(newSize);
-                itemstack.applyComponents(newComponents);
-
-                for (BlockSnapshot snap : blockSnapshots) {
-                    int updateFlag = snap.getFlags();
-                    BlockState oldBlock = snap.getState();
-                    BlockState newBlock = level.getBlockState(snap.getPos());
-                    newBlock.onPlace(level, snap.getPos(), oldBlock, false);
-
-                    level.markAndNotifyBlock(snap.getPos(), level.getChunkAt(snap.getPos()), oldBlock, newBlock, updateFlag, 512);
-                }
-                if (player != null)
-                    player.awardStat(Stats.ITEM_USED.get(item));
             }
+        } else {
+            // Change the stack to its new content
+            itemstack.setCount(newSize);
+            itemstack.applyComponents(newComponents);
+
+            for (BlockSnapshot snap : blockSnapshots) {
+                int updateFlag = snap.getFlags();
+                BlockState oldBlock = snap.getState();
+                BlockState newBlock = level.getBlockState(snap.getPos());
+                newBlock.onPlace(level, snap.getPos(), oldBlock, false);
+
+                level.markAndNotifyBlock(snap.getPos(), level.getChunkAt(snap.getPos()), oldBlock, newBlock, updateFlag, 512);
+            }
+            if (awardStat && player != null) // Sporran: awardStat
+                player.awardStat(Stats.ITEM_USED.get(item));
         }
-        level.sporran$getCapturedBlockSnapshots().clear();
 
         return ret;
     }

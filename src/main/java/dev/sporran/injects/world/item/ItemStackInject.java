@@ -6,6 +6,7 @@
 
 package dev.sporran.injects.world.item;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -26,6 +27,7 @@ import net.neoforged.neoforge.common.MutableDataComponentHolder;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.common.extensions.IItemExtension;
 import net.neoforged.neoforge.common.extensions.IItemStackExtension;
+import net.neoforged.neoforge.common.util.BlockSnapshot;
 import net.neoforged.neoforge.event.EventHooks;
 import net.neoforged.neoforge.event.entity.player.UseItemOnBlockEvent;
 import org.jetbrains.annotations.Nullable;
@@ -43,6 +45,7 @@ import dev.sporran.util.SporranHelper;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Holder;
+import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.component.PatchedDataComponentMap;
 import net.minecraft.network.chat.Component;
@@ -57,6 +60,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BucketItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
@@ -65,6 +69,7 @@ import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.level.ItemLike;
+import net.minecraft.world.level.Level;
 
 @Mixin(ItemStack.class)
 public abstract class ItemStackInject implements MutableDataComponentHolder, IItemStackExtension, ItemStackInjection {
@@ -101,38 +106,103 @@ public abstract class ItemStackInject implements MutableDataComponentHolder, IIt
     @Unique
     private Function<UseOnContext, InteractionResult> sporran$callback;
 
+    // Sporran: NeoForge returns CommonHooks.onPlaceItemIntoWorld here on the server, which skips the vanilla body (and every other mod's
+    //  mixin into it). The vanilla body runs instead; the placement handling of onPlaceItemIntoWorld is done around its Item#useOn call
+    //  (sporran$tryUseOnCallback / sporran$placeItemIntoWorld).
     @Inject(method = "useOn", at = @At("HEAD"), cancellable = true)
     private void sporran$tryPlaceItemInWorld(UseOnContext context, CallbackInfoReturnable<InteractionResult> cir) {
         if (this.sporran$callback == null) {
             var e = NeoForge.EVENT_BUS.post(new UseItemOnBlockEvent(context, UseItemOnBlockEvent.UsePhase.ITEM_AFTER_BLOCK));
             if (e.isCanceled()) {
                 cir.setReturnValue(e.getCancellationResult().result());
-            } else if (!context.getLevel().isClientSide()) {
-                cir.setReturnValue(CommonHooks.onPlaceItemIntoWorld(context));
             }
         }
     }
 
     @Override
     public InteractionResult onItemUseFirst(UseOnContext context) {
-        this.sporran$callback = c -> this.getItem().onItemUseFirst((ItemStack) (Object) this, c);
         var e = NeoForge.EVENT_BUS.post(new UseItemOnBlockEvent(context, UseItemOnBlockEvent.UsePhase.ITEM_BEFORE_BLOCK));
         if (e.isCanceled()) return e.getCancellationResult().result();
-        var result = this.useOn(context);
-        this.sporran$callback = null;
-        return result;
+        // Sporran: set after the event and always cleared again (a cancelled event or an exception used to leave it set, so the
+        //  next useOn of this stack skipped ITEM_AFTER_BLOCK and the placement and called onItemUseFirst instead of Item#useOn).
+        this.sporran$callback = c -> this.getItem().onItemUseFirst((ItemStack) (Object) this, c);
+        try {
+            return this.useOn(context);
+        } finally {
+            this.sporran$callback = null;
+        }
     }
 
     @WrapOperation(method = "useOn", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/item/Item;useOn(Lnet/minecraft/world/item/context/UseOnContext;)Lnet/minecraft/world/InteractionResult;"))
     private InteractionResult sporran$tryUseOnCallback(Item instance, UseOnContext context, Operation<InteractionResult> original) {
         if (sporran$callback != null) {
-            var value = sporran$callback.apply(context);
+            // Sporran: cleared before the call, so a useOn of this stack from inside onItemUseFirst takes the normal path.
+            var callback = sporran$callback;
             sporran$callback = null;
 
-            return value;
+            return callback.apply(context);
         }
 
-        return original.call(instance, context);
+        if (context.getLevel().isClientSide()) {
+            return original.call(instance, context);
+        }
+
+        return sporran$placeItemIntoWorld(instance, context, original);
+    }
+
+    /**
+     * Sporran: {@link CommonHooks#onPlaceItemIntoWorld} around the {@code Item#useOn} call of the vanilla body (logical server only):
+     * block snapshots are captured during the call (not for buckets), {@code PlayerDestroyItemEvent} fires if the stack was used up,
+     * and for a result that consumes the action the (multi) place event decides; when it is cancelled the blocks are restored, the stack
+     * keeps its pre-use count and the result is FAIL, so the vanilla body awards no stat. Otherwise the vanilla body awards it as usual.
+     * <p>
+     * All per-call state is local, so a nested {@code useOn} (an item whose {@code useOn} uses another stack) gets its own: it only takes
+     * the snapshots captured after it started, leaves the outer call's to it and switches capturing back to what it found. Capturing is
+     * switched back also when {@code Item#useOn} or a listener throws.
+     */
+    @Unique
+    private InteractionResult sporran$placeItemIntoWorld(Item item, UseOnContext context, Operation<InteractionResult> original) {
+        ItemStack itemstack = context.getItemInHand();
+        Level level = context.getLevel();
+        Player player = context.getPlayer();
+
+        int size = itemstack.getCount();
+        DataComponentMap components = itemstack.getComponents();
+        ItemStack copy = itemstack.copy();
+
+        boolean capture = !(item instanceof BucketItem);
+        boolean wasCapturing = level.sporran$getCapturingBlockSnapshots();
+        ArrayList<BlockSnapshot> captured = level.sporran$getCapturedBlockSnapshots();
+        // Not nested: everything in the list is ours, like onPlaceItemIntoWorld. Nested in another capture: only what is added from here on.
+        int start = wasCapturing ? captured.size() : 0;
+
+        InteractionResult ret;
+        List<BlockSnapshot> blockSnapshots = List.of();
+        try {
+            if (capture) level.sporran$setCapturingBlockSnapshots(true);
+            try {
+                ret = original.call(item, context);
+                if (itemstack.isEmpty())
+                    EventHooks.onPlayerDestroyItem(player, copy, context.getHand());
+            } finally {
+                if (capture) {
+                    // Off while the events fire and the blocks are restored or updated, as in onPlaceItemIntoWorld.
+                    level.sporran$setCapturingBlockSnapshots(false);
+                    // Taken off the level also on an exception, so they are never left for the next capture.
+                    List<BlockSnapshot> own = captured.subList(Math.min(start, captured.size()), captured.size());
+                    blockSnapshots = new ArrayList<>(own);
+                    own.clear();
+                }
+            }
+
+            if (ret.consumesAction()) {
+                ret = CommonHooks.sporran$firePlaceEvents(context, itemstack, item, size, components, blockSnapshots, ret, false);
+            }
+        } finally {
+            if (capture) level.sporran$setCapturingBlockSnapshots(wasCapturing);
+        }
+
+        return ret;
     }
 
     // Sporran: Ignore wrapEncodingExceptions
