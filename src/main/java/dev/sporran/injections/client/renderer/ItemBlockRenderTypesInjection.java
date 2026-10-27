@@ -1,5 +1,5 @@
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -18,6 +18,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.client.ChunkRenderTypeSet;
 import dev.sporran.client.SporranClient;
+import dev.sporran.helpers.BakedModelOverrides;
 import dev.sporran.mixin.ItemBlockRenderTypesAccessor;
 import dev.sporran.util.DefaultedHashMap;
 
@@ -60,6 +61,9 @@ public interface ItemBlockRenderTypesInjection {
         checkClientLoading();
         BlockRenderLayerMap.INSTANCE.putBlock(block, layers.asList().get(0));
         BLOCK_RENDER_TYPES.put(block, layers);
+        // Sporran: vanilla/Fabric only know the first layer (BlockRenderLayerMap above), so the render type hooks keep
+        //  NeoForge's path for a block with several layers.
+        BakedModelOverrides.onRenderLayersSet(block, layers);
     }
 
     static void setRenderLayer(Fluid fluid, RenderType type) {

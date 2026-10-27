@@ -1,6 +1,6 @@
 // TRACKED HASH: 888fe9a96f9d5a8c2d781b57f5dd842300de67c8
 /*
- * Changed by the Sporran project between 2026-09-29 and 2026-10-04; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -27,7 +27,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.client.RenderTypeHelper;
-import net.neoforged.neoforge.client.extensions.IBakedModelExtension;
 import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
 import net.neoforged.neoforge.client.model.data.ModelData;
 import net.neoforged.neoforge.client.model.lighting.LightPipelineAwareModelBlockRenderer;
@@ -37,7 +36,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import dev.sporran.injections.client.renderer.block.BlockRenderDispatcherInjection;
 import dev.sporran.injections.client.renderer.block.ModelBlockRendererInjection;
-import dev.sporran.util.SporranHelper;
+import dev.sporran.helpers.BakedModelOverrides;
 
 @Mixin(BlockRenderDispatcher.class)
 public abstract class BlockRenderDispatcherInject implements BlockRenderDispatcherInjection {
@@ -56,9 +55,6 @@ public abstract class BlockRenderDispatcherInject implements BlockRenderDispatch
     @Unique private final ThreadLocal<ModelData> sporran$modelData = ThreadLocal.withInitial(() -> ModelData.EMPTY);
     @Unique private final ThreadLocal<RenderType> sporran$renderType = new ThreadLocal<>();
     @Unique private final ThreadLocal<Boolean> sporran$queryModelSpecificData = ThreadLocal.withInitial(() -> true);
-
-    // Sporran: runs for every single block rendered in a frame (entities carrying or showing blocks), resolve the override check only once.
-    @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_RENDER_TYPES_OVERRIDE = SporranHelper.MethodOverrideCheck.of(IBakedModelExtension.class, "getRenderTypes", BlockState.class, RandomSource.class, ModelData.class);
 
     @Override
     public void renderBreakingTexture(BlockState state, BlockPos pos, BlockAndTintGetter level, PoseStack poseStack, VertexConsumer consumer, ModelData data) {
@@ -114,10 +110,24 @@ public abstract class BlockRenderDispatcherInject implements BlockRenderDispatch
     private void sporran$tryUseForgeRenderModel(ModelBlockRenderer instance, PoseStack.Pose pose, VertexConsumer vertexConsumer, BlockState blockState, BakedModel bakedModel, float f, float g, float h, int i, int j, Operation<Void> original) {
         var modelData = sporran$modelData.get();
         var mainRenderType = sporran$renderType.get();
+        boolean neoRenderTypes = BakedModelOverrides.usesNeoBlockRenderTypes(bakedModel, blockState);
+
+        // Sporran: a model without NeoForge render types (BakedModelOverrides) renders in the block's single
+        //  ItemBlockRenderTypes layer, which is the buffer vanilla already took (getRenderType(state, false) is
+        //  RenderTypeHelper.getEntityRenderType of that layer), so without model data and without a render type from
+        //  the caller vanilla renders the same. The branches below are unchanged; the elif compares a chunk layer with
+        //  an entity render type and so was taken for every such model.
+        if (!neoRenderTypes && modelData == ModelData.EMPTY && mainRenderType == null) {
+            original.call(instance, pose, vertexConsumer, blockState, bakedModel, f, g, h, i, j);
+            return;
+        }
+
         var singleRenderType = ItemBlockRenderTypes.getRenderType(blockState, false);
         var existingRenderTypes = bakedModel.getRenderTypes(blockState, RandomSource.create(42), modelData).asList();
 
-        if (sporran$GET_RENDER_TYPES_OVERRIDE.test(bakedModel.getClass())) {
+        // Sporran: was a plain getRenderTypes override check against IBakedModelExtension, true for every SimpleBakedModel,
+        //  MultiPartBakedModel and WeightedBakedModel (Sporran merges getRenderTypes into them).
+        if (neoRenderTypes) {
             for (RenderType renderType : existingRenderTypes) {
                 if (modelData == ModelData.EMPTY)
                     original.call(instance, pose, vertexConsumer, blockState, bakedModel, f, g, h, i, j);

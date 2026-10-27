@@ -1,6 +1,6 @@
 // TRACKED HASH: 1d8a0b7284d1984f5569698b72ad22e422c65e9a
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -111,6 +111,13 @@ public abstract class BlockModelInject implements BlockModelInjection {
     public void sporran$handleCustomModels(ModelBaker modelBaker, BlockModel ownerModel, Function<Material, TextureAtlasSprite> spriteGetter, ModelState state, boolean guiLight3d, CallbackInfoReturnable<BakedModel> cir) {
         // Avoid replacing the bake process entirely, unless there are any obvious tells that
         // the model data is from a Forge model
+        // Sporran: the GENERATION_MARKER tell does not catch vanilla flat item models. ModelBakery's baker
+        //  (bakeUncached) bakes those through its own shortcut, ITEM_MODEL_GENERATOR.generateBlockModel(...).bake(...),
+        //  and the generated model has no parent, so its root model is itself and it comes here without that tell (its
+        //  NeoForge data is copied by ItemModelGeneratorInject, so render_type/transform/visibility still count). Only a
+        //  direct bake of an item/generated child, which bypasses that shortcut (NeoForge geometries such as
+        //  separate_transforms, or mods baking a sub model themselves), has GENERATION_MARKER as its root; vanilla would
+        //  bake that to a model without quads, NeoForge's patched bake generates the item model, so it stays NeoForge's.
         if (!this.sporran$isVanilla) {
             if (customData.getRenderTypeHint() != null || !customData.getRootTransform().isIdentity() || customData.visibilityData.sporran$hasAnyData() || customData.getCustomGeometry() instanceof IUnbakedGeometry<?> || getRootModel() == ModelBakery.GENERATION_MARKER) {
                 cir.setReturnValue(UnbakedGeometryHelper.bake((BlockModel) (Object) this, modelBaker, ownerModel, spriteGetter, state, guiLight3d));

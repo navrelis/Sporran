@@ -1,6 +1,6 @@
 // TRACKED HASH: a6a92c5ed3c30e0c66da8293c5f764431f4fee0f
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -40,19 +40,50 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
+import dev.sporran.helpers.BakedModelOverrides;
 import dev.sporran.injections.client.resources.model.MultiPartBakedModelInjection;
 
 import java.util.*;
 import java.util.function.Predicate;
 
 @Mixin(value = MultiPartBakedModel.class, priority = 1050)
-public abstract class MultiPartBakedModelInject implements IDynamicBakedModel, MultiPartBakedModelInjection {
+public abstract class MultiPartBakedModelInject implements IDynamicBakedModel, MultiPartBakedModelInjection, BakedModelOverrides.Composite {
     @Shadow @Final private Map<BlockState, BitSet> selectorCache;
     @Shadow @Final private List<Pair<Predicate<BlockState>, BakedModel>> selectors;
 
     @Shadow public abstract List<BakedQuad> getQuads(@Nullable BlockState state, @Nullable Direction direction, RandomSource random);
 
     @Unique private BakedModel defaultModel;
+
+    // Sporran: 0 = not resolved yet, 1 = no part has NeoForge block render types, 2 = a part has. The parts never
+    //  change after baking, so this is resolved once; racing threads resolve the same value.
+    @Unique private byte sporran$neoBlockRenderTypes;
+
+    @Override
+    public boolean sporran$hasNeoBlockRenderTypes() {
+        byte resolved = this.sporran$neoBlockRenderTypes;
+
+        if (resolved == 0) {
+            resolved = 1;
+
+            for (Pair<Predicate<BlockState>, BakedModel> selector : this.selectors) {
+                if (BakedModelOverrides.hasNeoBlockRenderTypes(selector.getRight())) {
+                    resolved = 2;
+                    break;
+                }
+            }
+
+            this.sporran$neoBlockRenderTypes = resolved;
+        }
+
+        return resolved == 2;
+    }
+
+    // Sporran: vanilla's useAmbientOcclusion() and the NeoForge one below both answer from the first part.
+    @Override
+    public BakedModel sporran$getAmbientOcclusionDelegate() {
+        return this.defaultModel;
+    }
 
     @WrapOperation(method = "<init>", at = @At(value = "INVOKE", target = "Lorg/apache/commons/lang3/tuple/Pair;getRight()Ljava/lang/Object;", remap = false))
     private <L, R> R sporran$setDefaultModel(Pair<L, R> instance, Operation<R> original) {

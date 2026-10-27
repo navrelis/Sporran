@@ -1,6 +1,6 @@
 // TRACKED HASH: 2ea7001a7c90b80f52417cae8858b9c1cbe2be58
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -33,16 +33,47 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
+import dev.sporran.helpers.BakedModelOverrides;
 
 import java.util.List;
 
 @Mixin(WeightedBakedModel.class)
-public abstract class WeightedBakedModelInject implements IDynamicBakedModel {
+public abstract class WeightedBakedModelInject implements IDynamicBakedModel, BakedModelOverrides.Composite {
     @Shadow public abstract List<BakedQuad> getQuads(@Nullable BlockState state, @Nullable Direction direction, RandomSource random);
 
     @Shadow @Final private BakedModel wrapped;
     @Shadow @Final private List<WeightedEntry.Wrapper<BakedModel>> list;
     @Shadow @Final private int totalWeight;
+
+    // Sporran: 0 = not resolved yet, 1 = no variant has NeoForge block render types, 2 = a variant has. The variants
+    //  never change after baking, so this is resolved once; racing threads resolve the same value.
+    @Unique private byte sporran$neoBlockRenderTypes;
+
+    @Override
+    public boolean sporran$hasNeoBlockRenderTypes() {
+        byte resolved = this.sporran$neoBlockRenderTypes;
+
+        if (resolved == 0) {
+            resolved = 1;
+
+            for (WeightedEntry.Wrapper<BakedModel> entry : this.list) {
+                if (BakedModelOverrides.hasNeoBlockRenderTypes(entry.data())) {
+                    resolved = 2;
+                    break;
+                }
+            }
+
+            this.sporran$neoBlockRenderTypes = resolved;
+        }
+
+        return resolved == 2;
+    }
+
+    // Sporran: vanilla's useAmbientOcclusion() and the NeoForge one below both answer from the wrapped (first) variant.
+    @Override
+    public BakedModel sporran$getAmbientOcclusionDelegate() {
+        return this.wrapped;
+    }
     @Unique private static final ThreadLocal<RenderType> sporran$renderType = ThreadLocal.withInitial(() -> null);
     @Unique private static final ThreadLocal<ModelData> sporran$modelData = ThreadLocal.withInitial(() -> ModelData.EMPTY);
 

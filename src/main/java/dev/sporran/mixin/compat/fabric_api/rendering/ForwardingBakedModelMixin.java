@@ -1,5 +1,5 @@
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -29,11 +29,19 @@ import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.block.state.BlockState;
 
 import net.fabricmc.fabric.api.renderer.v1.model.ForwardingBakedModel;
+import dev.sporran.helpers.BakedModelOverrides;
 
 @Mixin(ForwardingBakedModel.class)
-public abstract class ForwardingBakedModelMixin implements IBakedModelExtension {
+public abstract class ForwardingBakedModelMixin implements IBakedModelExtension, BakedModelOverrides.Forwarding {
     @Shadow
     protected BakedModel wrapped;
+
+    // Sporran: the render type and ambient occlusion hooks look through to the wrapped model (BakedModelOverrides), the
+    //  overrides below only forward to it.
+    @Override
+    public BakedModel sporran$getWrapped() {
+        return this.wrapped;
+    }
 
     @Override
     public List<BakedQuad> getQuads(@Nullable BlockState state, @Nullable Direction side, RandomSource rand, ModelData data, @Nullable RenderType renderType) {

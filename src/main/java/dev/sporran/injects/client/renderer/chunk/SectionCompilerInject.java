@@ -1,5 +1,5 @@
 /*
- * Changed by the Sporran project between 2026-09-29 and 2026-10-04; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -18,7 +18,6 @@ import com.mojang.blaze3d.vertex.VertexSorting;
 import net.neoforged.neoforge.client.ChunkRenderTypeSet;
 import net.neoforged.neoforge.client.ClientHooks;
 import net.neoforged.neoforge.client.event.AddSectionGeometryEvent;
-import net.neoforged.neoforge.client.extensions.IBakedModelExtension;
 import net.neoforged.neoforge.client.model.data.ModelData;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -27,9 +26,8 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import dev.sporran.injections.client.renderer.ItemBlockRenderTypesInjection;
+import dev.sporran.helpers.BakedModelOverrides;
 import dev.sporran.injections.client.renderer.chunk.SectionCompilerInjection;
-import dev.sporran.util.SporranHelper;
 
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.SectionBufferBuilderPack;
@@ -48,9 +46,6 @@ public abstract class SectionCompilerInject implements SectionCompilerInjection 
     @Shadow protected abstract BufferBuilder getOrBeginLayer(Map<RenderType, BufferBuilder> bufferLayers, SectionBufferBuilderPack sectionBufferBuilderPack, RenderType renderType);
 
     @Unique private ThreadLocal<List<AddSectionGeometryEvent.AdditionalSectionRenderer>> sporran$additionalRenderers = ThreadLocal.withInitial(List::of);
-
-    // Sporran: runs for every block with a model while a section is compiled, resolve the override check only once.
-    @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_RENDER_TYPES_OVERRIDE = SporranHelper.MethodOverrideCheck.of(IBakedModelExtension.class, "getRenderTypes", BlockState.class, RandomSource.class, ModelData.class);
 
     @Override
     public void sporran$setAdditionalRenderers(List<AddSectionGeometryEvent.AdditionalSectionRenderer> renderers) {
@@ -79,11 +74,16 @@ public abstract class SectionCompilerInject implements SectionCompilerInjection 
             modelData = model.getModelData(region, pos, state, modelData);
             randomSource.setSeed(state.getSeed(pos));
 
-            ChunkRenderTypeSet renderTypes = model.getRenderTypes(state, randomSource, modelData);
-            // Sporran: Fallback to Vanilla
-            if (modelData == ModelData.EMPTY && renderTypes.sporran$size() == 1 && ItemBlockRenderTypesInjection.getRenderLayers(state) == renderTypes && !sporran$GET_RENDER_TYPES_OVERRIDE.test(model.getClass())) {
+            // Sporran: Fallback to Vanilla. The check was a plain getRenderTypes override check against
+            //  IBakedModelExtension, true for every SimpleBakedModel, MultiPartBakedModel and WeightedBakedModel (Sporran
+            //  merges getRenderTypes into them), so no block ever took vanilla's path. A model without NeoForge render
+            //  types (BakedModelOverrides) returns ItemBlockRenderTypes.getRenderLayers(state), and as long as the block has
+            //  only one layer that is the vanilla chunk layer, so with no model data vanilla renders the same.
+            if (modelData == ModelData.EMPTY && !BakedModelOverrides.usesNeoBlockRenderTypes(model, state)) {
                 return true;
             }
+
+            ChunkRenderTypeSet renderTypes = model.getRenderTypes(state, randomSource, modelData);
 
             for (RenderType renderType : renderTypes) {
                 BufferBuilder bufferBuilder = this.getOrBeginLayer(map, bufferBuilderPack, renderType);

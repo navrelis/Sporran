@@ -55,11 +55,30 @@ More hooks that replaced vanilla code although no NeoForge mod needed them (cont
   a subclass that overrides it is asked). But the merged `getCustomIngredient` called `neoforge$getCustomIngredient`,
   so a subclass override that calls `super.getCustomIngredient()` recursed until a stack overflow. It now returns the
   field, like NeoForge's method.
+- Block render types: the vanilla section compiler, `BlockRenderDispatcher.renderSingleBlock` and Sodium's
+  `getModelRenderTypes` asked whether the model overrides `getRenderTypes`, which was true for every `SimpleBakedModel`,
+  `MultiPartBakedModel` and `WeightedBakedModel` (Sporran adds the method to them), so no block took the vanilla or
+  Sodium path. They now use NeoForge's render types only for a model with a RenderTypeGroup (`render_type` in its
+  model json), a model that really overrides `getRenderTypes`, a multipart/weighted/forwarding model with such a part,
+  or a block a NeoForge mod gave several layers with `ItemBlockRenderTypes.setRenderLayer`. Every other model gets the
+  single `ItemBlockRenderTypes` layer, which is what NeoForge would have returned for it too.
+- Sodium (`FabricBlockAccess`): light emission, face hiding, fluid overlay, fluid face occlusion, ambient occlusion and
+  block entity glow keep Sodium's own answer unless the block, model or block entity overrides the NeoForge method;
+  then they return what Sodium's NeoForge build returns. The checks were against `Block`, `BakedModel` and `BlockEntity`
+  (always true), and those for `getLightEmission` and `hidesNeighborFace` had wrong parameter lists (never true).
+  Multipart, weighted and Fabric forwarding models are looked through to the model they forward ambient occlusion to.
+- `BlockModel.bake`: the check that hands models with `builtin/generated` as root to NeoForge's baking was verified and
+  kept. Vanilla flat item models never reach it (vanilla's model baker generates them first and bakes the generated
+  model, which has no parent); only a direct bake of such a model by a NeoForge geometry does, where vanilla would bake
+  an empty model.
 
 The server self-test phase `vanillaHooks` also checks hoppers, `isAir`, `isEyeInFluid`, the vibration frequency and
 block placement through `ItemStack.useOn` (vanilla body, `EntityPlaceEvent` accept/cancel, nested use, exception),
 `ServerPlayerGameMode.destroyBlock` (a probe on the `hasCorrectToolForDrops` call, one `HarvestCheck` per break, the
 listener's answer decides the drops) and `neoforge$getCustomIngredient` of vanilla and custom ingredients.
+
+The client self-test's resources phase records which `BlockModel.bake` calls reach vanilla's bake
+(`resources.modelBakeProbe`); every `minecraft:` model, flat item models included, must.
 
 ## Sporran 1.0.1 (2026-10-27)
 

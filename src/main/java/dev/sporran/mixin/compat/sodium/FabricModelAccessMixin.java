@@ -1,5 +1,5 @@
 /*
- * Changed by the Sporran project between 2026-09-29 and 2026-10-04; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -23,6 +23,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import dev.sporran.helpers.BakedModelOverrides;
 import dev.sporran.util.SporranHelper;
 
 import net.minecraft.client.renderer.RenderType;
@@ -41,13 +42,18 @@ import net.minecraft.world.level.block.state.BlockState;
 public abstract class FabricModelAccessMixin {
     // Sporran: Sodium's mesher asks these for every block, face and model on all of its worker threads, resolve the
     //  override checks only once.
-    @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_RENDER_TYPES_OVERRIDE = SporranHelper.MethodOverrideCheck.of(IBakedModelExtension.class, "getRenderTypes", BlockState.class, RandomSource.class, ModelData.class);
     @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_QUADS_OVERRIDE = SporranHelper.MethodOverrideCheck.of(IBakedModelExtension.class, "getQuads", BlockState.class, Direction.class, RandomSource.class, ModelData.class, RenderType.class);
     @Unique private static final SporranHelper.MethodOverrideCheck sporran$GET_MODEL_DATA_OVERRIDE = SporranHelper.MethodOverrideCheck.of(IBakedModelExtension.class, "getModelData", BlockAndTintGetter.class, BlockPos.class, BlockState.class, ModelData.class);
 
+    // Sporran: was a plain getRenderTypes override check against IBakedModelExtension, which is true for every
+    //  SimpleBakedModel, MultiPartBakedModel and WeightedBakedModel (Sporran merges getRenderTypes into them), so Sodium's
+    //  own layer was never used. Now only a model with NeoForge render types (a RenderTypeGroup, a real override, or a
+    //  part/variant/wrapped model with one) or a block a NeoForge mod gave several layers takes NeoForge's answer (what
+    //  Sodium's NeoForge build returns); any other model's NeoForge answer is ItemBlockRenderTypes' single layer, which
+    //  is what Sodium's Fabric getModelRenderTypes returns itself.
     @Inject(method = "getModelRenderTypes", at = @At("HEAD"), cancellable = true)
     private void sporran$tryGetNeoRenderTypes(BlockAndTintGetter level, BakedModel model, BlockState state, BlockPos pos, RandomSource random, SodiumModelData modelData, CallbackInfoReturnable<Iterable<RenderType>> cir) {
-        if (sporran$GET_RENDER_TYPES_OVERRIDE.test(model.getClass())) {
+        if (BakedModelOverrides.usesNeoBlockRenderTypes(model, state)) {
             cir.setReturnValue(model.getRenderTypes(state, random, (ModelData) (Object) modelData));
         }
     }

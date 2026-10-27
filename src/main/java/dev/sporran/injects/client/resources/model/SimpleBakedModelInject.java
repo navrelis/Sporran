@@ -1,6 +1,6 @@
 // TRACKED HASH: 25378fba48cfc872af48b0db6f756b86dead555a
 /*
- * Changed by the Sporran project on 2026-09-29; see docs/CHANGES.md.
+ * Changed by the Sporran project between 2026-09-29 and 2026-10-27; see docs/CHANGES.md.
  * Based on Kilt by KiltMC (https://github.com/KiltMC/Kilt). Licensed under the GNU LGPL 2.1.
  */
 
@@ -23,6 +23,7 @@ import net.neoforged.neoforge.client.model.data.ModelData;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import dev.sporran.helpers.BakedModelOverrides;
 import dev.sporran.helpers.mixin.CreateInitializer;
 import dev.sporran.injections.client.resources.model.SimpleBakedModelBuilderInjection;
 import dev.sporran.injections.client.resources.model.SimpleBakedModelInjection;
@@ -31,7 +32,7 @@ import java.util.List;
 import java.util.Map;
 
 @Mixin(SimpleBakedModel.class)
-public abstract class SimpleBakedModelInject implements BakedModelInject, SimpleBakedModelInjection {
+public abstract class SimpleBakedModelInject implements BakedModelInject, SimpleBakedModelInjection, BakedModelOverrides.RenderTypeGroupHolder {
     protected ChunkRenderTypeSet blockRenderTypes;
     protected List<RenderType> itemRenderTypes;
     protected List<RenderType> fabulousItemRenderTypes;
@@ -52,6 +53,13 @@ public abstract class SimpleBakedModelInject implements BakedModelInject, Simple
         this.blockRenderTypes = !renderTypeGroup.isEmpty() ? ChunkRenderTypeSet.of(renderTypeGroup.block()) : null;
         this.itemRenderTypes = !renderTypeGroup.isEmpty() ? List.of(renderTypeGroup.entity()) : null;
         this.fabulousItemRenderTypes = !renderTypeGroup.isEmpty() ? List.of(renderTypeGroup.entityFabulous()) : null;
+    }
+
+    // Sporran: lets the block render type hooks leave a model without a RenderTypeGroup to vanilla/Sodium
+    //  (BakedModelOverrides); getRenderTypes below then only returns the default ItemBlockRenderTypes layers.
+    @Override
+    public boolean sporran$hasBlockRenderTypes() {
+        return this.blockRenderTypes != null;
     }
 
     @Override
